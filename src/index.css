@@ -1,0 +1,148 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+
+  --color-ivory: #FDFCFB;
+  --color-charcoal: #1A1A1A;
+  --color-sage: #7A8B82;
+  --color-navy: #1E293B;
+  
+  --color-success-muted: #2D5A27;
+  --color-warning-muted: #B45309;
+  --color-danger-muted: #991B1B;
+}
+
+@layer base {
+  body {
+    @apply bg-ivory text-charcoal font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif;
+  }
+}
+
+html.theme-dark {
+  --color-ivory: #0b1220;
+  --color-charcoal: #e5e7eb;
+  --color-sage: #93a59b;
+  --color-navy: #20304f;
+  --color-success-muted: #4ade80;
+  --color-warning-muted: #f59e0b;
+  --color-danger-muted: #f87171;
+}
+
+html.theme-dark body {
+  background: radial-gradient(1200px 700px at 20% -20%, #1e293b 0%, #0b1220 55%, #060b15 100%);
+  color: #e5e7eb;
+}
+
+html.theme-dark .glass-card {
+  background: rgba(15, 23, 42, 0.82);
+  border-color: rgba(148, 163, 184, 0.24);
+  box-shadow: 0 8px 30px rgba(2, 8, 23, 0.35);
+}
+
+html.theme-dark .modal-surface,
+html.theme-dark .popover-surface {
+  background: rgba(15, 23, 42, 0.96) !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+  color: #e5e7eb;
+}
+
+html.theme-dark .modal-surface .text-navy,
+html.theme-dark .popover-surface .text-navy,
+html.theme-dark .glass-card .text-navy {
+  color: #93c5fd !important;
+}
+
+html.theme-dark .modal-surface .text-charcoal\/20,
+html.theme-dark .popover-surface .text-charcoal\/20 {
+  color: rgba(226, 232, 240, 0.6) !important;
+}
+
+html.theme-dark .modal-surface .text-charcoal\/30,
+html.theme-dark .popover-surface .text-charcoal\/30 {
+  color: rgba(226, 232, 240, 0.7) !important;
+}
+
+html.theme-dark .modal-surface .text-charcoal\/40,
+html.theme-dark .popover-surface .text-charcoal\/40 {
+  color: rgba(226, 232, 240, 0.78) !important;
+}
+
+html.theme-dark .modal-surface .text-charcoal\/50,
+html.theme-dark .popover-surface .text-charcoal\/50 {
+  color: rgba(226, 232, 240, 0.84) !important;
+}
+
+html.theme-dark .modal-surface .text-charcoal\/60,
+html.theme-dark .popover-surface .text-charcoal\/60 {
+  color: rgba(226, 232, 240, 0.9) !important;
+}
+
+html.theme-dark .input-field {
+  background: rgba(15, 23, 42, 0.92);
+  color: #e5e7eb;
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+html.theme-dark .input-field::placeholder {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+html.theme-dark .btn-primary {
+  background: #2563eb;
+}
+
+html.theme-dark .btn-primary:hover {
+  background: #1d4ed8;
+}
+
+html.theme-dark .btn-secondary {
+  background: #475569;
+}
+
+html.theme-dark main {
+  background: transparent;
+}
+
+html.theme-dark header {
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+.glass-card {
+  @apply bg-white/70 backdrop-blur-sm border border-charcoal/5 shadow-sm rounded-xl;
+}
+
+.modal-surface {
+  @apply bg-white border border-charcoal/10 text-charcoal;
+}
+
+.popover-surface {
+  @apply bg-white border border-charcoal/10 text-charcoal;
+}
+
+.btn-primary {
+  @apply bg-navy text-white px-4 py-2 rounded-lg hover:bg-navy/90 transition-colors font-medium;
+}
+
+.btn-secondary {
+  @apply bg-sage text-white px-4 py-2 rounded-lg hover:bg-sage/90 transition-colors font-medium;
+}
+
+.input-field {
+  @apply w-full px-4 py-2 bg-white border border-charcoal/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-sage/20 focus:border-sage transition-all;
+}
+
+.table-header {
+  @apply text-xs uppercase tracking-wider text-charcoal/50 font-semibold py-4 px-6 text-left border-b border-charcoal/5;
+}
+
+.table-cell {
+  @apply py-4 px-6 text-sm border-b border-charcoal/5;
+}
