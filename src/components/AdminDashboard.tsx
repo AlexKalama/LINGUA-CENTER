@@ -61,6 +61,18 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showProgramReportModal, setShowProgramReportModal] = useState(false);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [reportProgramId, setReportProgramId] = useState<string>('ALL');
+  const [reportPeriod, setReportPeriod] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY'>('MONTHLY');
+  const [reportDate, setReportDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [programReport, setProgramReport] = useState<any>(null);
+  const [programReportLoading, setProgramReportLoading] = useState(false);
+  const [programReportError, setProgramReportError] = useState<string | null>(null);
+  const [showGraduatedModal, setShowGraduatedModal] = useState(false);
+  const [graduatedEnrollments, setGraduatedEnrollments] = useState<any[]>([]);
+  const [graduatedLoading, setGraduatedLoading] = useState(false);
+  const [graduatedError, setGraduatedError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -81,6 +93,39 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     }
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (!showProgramReportModal || programs.length) return;
+    async function fetchPrograms() {
+      try {
+        const list = await dataService.getPrograms();
+        setPrograms(list);
+        if (list.length && reportProgramId === 'ALL') {
+          // Keep "ALL" as default; user can choose specific program.
+        }
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+      }
+    }
+    fetchPrograms();
+  }, [showProgramReportModal, programs.length, reportProgramId]);
+
+  useEffect(() => {
+    if (!showGraduatedModal) return;
+    async function fetchGraduates() {
+      try {
+        setGraduatedLoading(true);
+        setGraduatedError(null);
+        const list = await dataService.getGraduatedEnrollments();
+        setGraduatedEnrollments(list);
+      } catch (error: any) {
+        setGraduatedError(error?.message || 'Failed to load graduated students.');
+      } finally {
+        setGraduatedLoading(false);
+      }
+    }
+    fetchGraduates();
+  }, [showGraduatedModal]);
 
   if (loading || !stats) {
     return (
@@ -262,6 +307,222 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const getPeriodRange = (dateStr: string, period: 'DAILY' | 'WEEKLY' | 'MONTHLY') => {
+    const base = new Date(dateStr || new Date().toISOString().split('T')[0]);
+    if (period === 'DAILY') {
+      const start = base.toISOString().split('T')[0];
+      const end = new Date(base);
+      end.setDate(end.getDate() + 1);
+      return { start, end: end.toISOString().split('T')[0] };
+    }
+    if (period === 'WEEKLY') {
+      const day = (base.getDay() + 6) % 7; // Monday = 0
+      const startDate = new Date(base);
+      startDate.setDate(base.getDate() - day);
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 7);
+      return { start: startDate.toISOString().split('T')[0], end: endDate.toISOString().split('T')[0] };
+    }
+    const startDate = new Date(base.getFullYear(), base.getMonth(), 1);
+    const endDate = new Date(base.getFullYear(), base.getMonth() + 1, 1);
+    return { start: startDate.toISOString().split('T')[0], end: endDate.toISOString().split('T')[0] };
+  };
+
+  const runProgramReport = async () => {
+    try {
+      setProgramReportLoading(true);
+      setProgramReportError(null);
+      const [transactions, students] = await Promise.all([
+        dataService.getRecentTransactions(5000),
+        dataService.getStudents(user)
+      ]);
+
+      const { start, end } = getPeriodRange(reportDate, reportPeriod);
+      const programLabel = reportProgramId === 'ALL'
+        ? 'All Programs'
+        : (programs.find(p => p.id === reportProgramId)?.label || reportProgramId);
+
+      const filteredTransactions = transactions.filter((tx: any) => {
+        const date = String(tx.date || '');
+        if (!date || date < start || date >= end) return false;
+        if (reportProgramId === 'ALL') return true;
+        return String(tx.programName || '') === reportProgramId;
+      });
+
+      const enrollments = students.flatMap(student =>
+        student.enrollments.map((enrollment: any) => ({
+          studentId: enrollment.studentId,
+          student: student.name,
+          email: student.email,
+          ...enrollment
+        }))
+      );
+      const filteredEnrollments = enrollments.filter((enrollment: any) => {
+        const date = String(enrollment.enrollmentDate || '');
+        if (!date || date < start || date >= end) return false;
+        if (reportProgramId === 'ALL') return true;
+        return String(enrollment.programType || '') === reportProgramId;
+      });
+
+      const totalRevenue = filteredTransactions.reduce((sum: number, tx: any) => sum + (+tx.amount || 0), 0);
+      const totalOutstanding = filteredEnrollments.reduce((sum: number, e: any) => sum + (+e.feeBalance || 0), 0);
+      const uniqueStudents = new Set(filteredEnrollments.map((e: any) => String(e.studentId || ''))).size;
+
+      setProgramReport({
+        period: reportPeriod,
+        periodLabel: reportPeriod === 'DAILY' ? 'Daily' : reportPeriod === 'WEEKLY' ? 'Weekly' : 'Monthly',
+        start,
+        end,
+        programId: reportProgramId,
+        programLabel,
+        transactions: filteredTransactions,
+        enrollments: filteredEnrollments,
+        totals: {
+          revenue: totalRevenue,
+          outstanding: totalOutstanding,
+          transactions: filteredTransactions.length,
+          enrollments: filteredEnrollments.length,
+          students: uniqueStudents
+        }
+      });
+    } catch (error: any) {
+      setProgramReportError(error?.message || 'Failed to load program report.');
+    } finally {
+      setProgramReportLoading(false);
+    }
+  };
+
+  const downloadProgramReport = () => {
+    if (!programReport) return;
+    const escapeHtml = (value: unknown) =>
+      String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    const safeCell = (value: unknown) => {
+      const text = String(value ?? '').trim();
+      if (!text) return '';
+      return ['=', '+', '-', '@'].includes(text[0]) ? `'${text}` : text;
+    };
+    const currency = (amount: number) => `Ksh ${Number(amount || 0).toLocaleString('en-KE')}`;
+    const generatedAt = new Date().toLocaleString('en-KE', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: Calibri, Arial, sans-serif; color: #1f2937; margin: 24px; }
+    h1 { margin: 0; font-size: 26px; color: #0f172a; }
+    h2 { margin: 26px 0 10px; font-size: 18px; color: #0f172a; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .summary { border-collapse: collapse; margin-top: 14px; width: 100%; max-width: 720px; }
+    .summary th, .summary td { border: 1px solid #d1d5db; padding: 9px 12px; text-align: left; }
+    .summary th { background: #f3f4f6; width: 260px; font-weight: 700; color: #111827; }
+    .sheet { border-collapse: collapse; width: 100%; }
+    .sheet th, .sheet td { border: 1px solid #d1d5db; padding: 8px 10px; font-size: 12px; }
+    .sheet th { background: #0f172a; color: #ffffff; text-transform: uppercase; letter-spacing: .03em; }
+    .sheet tr:nth-child(even) td { background: #f8fafc; }
+    .amount { text-align: right; font-weight: 600; }
+    .center { text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>Lingua Center Program Financial Report</h1>
+  <div class="muted">Program: ${escapeHtml(programReport.programLabel)} | Period: ${escapeHtml(programReport.periodLabel)} | Range: ${escapeHtml(programReport.start)} to ${escapeHtml(programReport.end)} | Generated: ${escapeHtml(generatedAt)}</div>
+
+  <table class="summary">
+    <tr><th>Total Revenue</th><td>${escapeHtml(currency(programReport.totals.revenue))}</td></tr>
+    <tr><th>Outstanding Balances</th><td>${escapeHtml(currency(programReport.totals.outstanding))}</td></tr>
+    <tr><th>Transactions</th><td>${programReport.totals.transactions}</td></tr>
+    <tr><th>Enrollments</th><td>${programReport.totals.enrollments}</td></tr>
+    <tr><th>Unique Students</th><td>${programReport.totals.students}</td></tr>
+  </table>
+
+  <h2>Transactions (${programReport.transactions.length})</h2>
+  <table class="sheet">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Student</th>
+        <th>Course</th>
+        <th>Level</th>
+        <th>Method</th>
+        <th>Reference</th>
+        <th>Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${programReport.transactions.length === 0
+        ? '<tr><td colspan="7" class="center">No transactions in this period.</td></tr>'
+        : programReport.transactions.map((tx: any) => `
+            <tr>
+              <td>${escapeHtml(tx.date || '')}</td>
+              <td>${escapeHtml(safeCell(tx.student || ''))}</td>
+              <td>${escapeHtml(safeCell(tx.courseName || ''))}</td>
+              <td>${escapeHtml(safeCell(tx.level || ''))}</td>
+              <td>${escapeHtml(tx.method || '')}</td>
+              <td>${escapeHtml(safeCell(tx.reference || '-'))}</td>
+              <td class="amount">${escapeHtml(currency(tx.amount || 0))}</td>
+            </tr>
+          `).join('')
+      }
+    </tbody>
+  </table>
+
+  <h2>Enrollments (${programReport.enrollments.length})</h2>
+  <table class="sheet">
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Course</th>
+        <th>Level</th>
+        <th>Status</th>
+        <th>Total Fee</th>
+        <th>Fee Balance</th>
+        <th>Enrollment Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${programReport.enrollments.length === 0
+        ? '<tr><td colspan="7" class="center">No enrollments in this period.</td></tr>'
+        : programReport.enrollments.map((enrollment: any) => `
+            <tr>
+              <td>${escapeHtml(safeCell(enrollment.student || ''))}</td>
+              <td>${escapeHtml(safeCell(enrollment.courseName || ''))}</td>
+              <td>${escapeHtml(safeCell(enrollment.level || ''))}</td>
+              <td class="center">${escapeHtml(enrollment.status || 'ACTIVE')}</td>
+              <td class="amount">${escapeHtml(currency(enrollment.totalFee || 0))}</td>
+              <td class="amount">${escapeHtml(currency(enrollment.feeBalance || 0))}</td>
+              <td>${escapeHtml(enrollment.enrollmentDate || '')}</td>
+            </tr>
+          `).join('')
+      }
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+    const blob = new Blob([`\uFEFF${html}`], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const safeProgram = programReport.programLabel.replace(/\s+/g, '-').toLowerCase();
+    link.download = `lingua-${safeProgram}-${programReport.period.toLowerCase()}-${programReport.start}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const runArchiveGraduatedStudents = async () => {
@@ -463,6 +724,13 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
               <TrendingUp size={18} className="text-charcoal/30 group-hover:text-navy" />
             </button>
             <button
+              onClick={() => setShowProgramReportModal(true)}
+              className="w-full flex items-center justify-between p-4 rounded-xl border border-charcoal/5 hover:bg-charcoal/5 transition-all group"
+            >
+              <span className="font-medium text-charcoal/70">Program Financial Reports</span>
+              <TrendingUp size={18} className="text-charcoal/30 group-hover:text-navy" />
+            </button>
+            <button
               onClick={() => setShowPasswordModal(true)}
               className="w-full flex items-center justify-between p-4 rounded-xl border border-charcoal/5 hover:bg-charcoal/5 transition-all group"
             >
@@ -491,6 +759,13 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
               <span className="font-medium text-charcoal/70">Archive Graduated Students</span>
               <GraduationCap size={18} className="text-charcoal/30 group-hover:text-sage" />
             </button>
+            <button
+              onClick={() => setShowGraduatedModal(true)}
+              className="w-full flex items-center justify-between p-4 rounded-xl border border-charcoal/5 hover:bg-charcoal/5 transition-all group"
+            >
+              <span className="font-medium text-charcoal/70">View Graduated Students</span>
+              <GraduationCap size={18} className="text-charcoal/30 group-hover:text-sage" />
+            </button>
           </div>
         </div>
       </div>
@@ -513,6 +788,282 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
           onClose={() => setShowManageAnnouncementsModal(false)}
         />
       )}
+      {showProgramReportModal && (
+        <ProgramReportModal
+          programs={programs}
+          reportProgramId={reportProgramId}
+          reportPeriod={reportPeriod}
+          reportDate={reportDate}
+          report={programReport}
+          loading={programReportLoading}
+          error={programReportError}
+          onProgramChange={setReportProgramId}
+          onPeriodChange={setReportPeriod}
+          onDateChange={setReportDate}
+          onRun={runProgramReport}
+          onDownload={downloadProgramReport}
+          onClose={() => setShowProgramReportModal(false)}
+        />
+      )}
+      {showGraduatedModal && (
+        <GraduatedStudentsModal
+          rows={graduatedEnrollments}
+          loading={graduatedLoading}
+          error={graduatedError}
+          onClose={() => setShowGraduatedModal(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProgramReportModal({
+  programs,
+  reportProgramId,
+  reportPeriod,
+  reportDate,
+  report,
+  loading,
+  error,
+  onProgramChange,
+  onPeriodChange,
+  onDateChange,
+  onRun,
+  onDownload,
+  onClose
+}: {
+  programs: any[];
+  reportProgramId: string;
+  reportPeriod: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  reportDate: string;
+  report: any;
+  loading: boolean;
+  error: string | null;
+  onProgramChange: (value: string) => void;
+  onPeriodChange: (value: 'DAILY' | 'WEEKLY' | 'MONTHLY') => void;
+  onDateChange: (value: string) => void;
+  onRun: () => void;
+  onDownload: () => void;
+  onClose: () => void;
+}) {
+  const currency = (amount: number) => `Ksh ${Number(amount || 0).toLocaleString('en-KE')}`;
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-charcoal/40 backdrop-blur-sm" />
+      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="relative w-full max-w-6xl modal-surface rounded-2xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h3 className="text-2xl font-serif text-charcoal">Program Financial Reports</h3>
+            <p className="text-sm text-charcoal/50">View daily, weekly, or monthly financial records per program.</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-charcoal/5 rounded-full"><X size={20} /></button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-charcoal/40 uppercase tracking-widest">Program</label>
+            <select className="input-field text-xs" value={reportProgramId} onChange={e => onProgramChange(e.target.value)}>
+              <option value="ALL">All Programs</option>
+              {programs.map(p => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-charcoal/40 uppercase tracking-widest">Period</label>
+            <select className="input-field text-xs" value={reportPeriod} onChange={e => onPeriodChange(e.target.value as any)}>
+              <option value="DAILY">Daily</option>
+              <option value="WEEKLY">Weekly</option>
+              <option value="MONTHLY">Monthly</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-charcoal/40 uppercase tracking-widest">Reference Date</label>
+            <input type="date" className="input-field text-xs" value={reportDate} onChange={e => onDateChange(e.target.value)} />
+          </div>
+          <div className="flex items-end gap-2">
+            <button onClick={onRun} disabled={loading} className="btn-primary w-full disabled:opacity-50">
+              {loading ? 'Loading...' : 'Run Report'}
+            </button>
+            <button onClick={onDownload} disabled={!report} className="btn-secondary w-full disabled:opacity-50">
+              Download
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="p-3 rounded-xl bg-danger-muted/10 text-danger-muted text-sm mb-4">
+            {error}
+          </div>
+        )}
+
+        {report ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+              <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">Revenue</p>
+                <p className="text-xl font-serif text-charcoal">{currency(report.totals.revenue)}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">Outstanding</p>
+                <p className="text-xl font-serif text-charcoal">{currency(report.totals.outstanding)}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">Transactions</p>
+                <p className="text-xl font-serif text-charcoal">{report.totals.transactions}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">Enrollments</p>
+                <p className="text-xl font-serif text-charcoal">{report.totals.enrollments}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">Students</p>
+                <p className="text-xl font-serif text-charcoal">{report.totals.students}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="glass-card p-4">
+                <h4 className="text-sm font-bold uppercase tracking-widest text-charcoal/40 mb-3">Transactions</h4>
+                <div className="max-h-72 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-charcoal/40 uppercase tracking-widest">
+                        <th className="text-left pb-2">Date</th>
+                        <th className="text-left pb-2">Student</th>
+                        <th className="text-left pb-2">Course</th>
+                        <th className="text-left pb-2">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-charcoal/70">
+                      {report.transactions.map((tx: any) => (
+                        <tr key={tx.id} className="border-t border-charcoal/5">
+                          <td className="py-2">{tx.date}</td>
+                          <td className="py-2">{tx.student}</td>
+                          <td className="py-2">{tx.courseName} {tx.level ? `- ${tx.level}` : ''}</td>
+                          <td className="py-2 font-semibold">{currency(tx.amount)}</td>
+                        </tr>
+                      ))}
+                      {report.transactions.length === 0 && (
+                        <tr><td colSpan={4} className="py-3 text-charcoal/40">No transactions in this period.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="glass-card p-4">
+                <h4 className="text-sm font-bold uppercase tracking-widest text-charcoal/40 mb-3">Enrollments</h4>
+                <div className="max-h-72 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-charcoal/40 uppercase tracking-widest">
+                        <th className="text-left pb-2">Student</th>
+                        <th className="text-left pb-2">Course</th>
+                        <th className="text-left pb-2">Status</th>
+                        <th className="text-left pb-2">Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-charcoal/70">
+                      {report.enrollments.map((enrollment: any) => (
+                        <tr key={enrollment.id} className="border-t border-charcoal/5">
+                          <td className="py-2">{enrollment.student}</td>
+                          <td className="py-2">{enrollment.courseName} {enrollment.level ? `- ${enrollment.level}` : ''}</td>
+                          <td className="py-2">{enrollment.status}</td>
+                          <td className="py-2 font-semibold">{currency(enrollment.feeBalance)}</td>
+                        </tr>
+                      ))}
+                      {report.enrollments.length === 0 && (
+                        <tr><td colSpan={4} className="py-3 text-charcoal/40">No enrollments in this period.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="p-4 rounded-xl bg-charcoal/[0.02] text-charcoal/50 text-sm">
+            Select a program and period, then run the report to view records.
+          </div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+function GraduatedStudentsModal({
+  rows,
+  loading,
+  error,
+  onClose
+}: {
+  rows: any[];
+  loading: boolean;
+  error: string | null;
+  onClose: () => void;
+}) {
+  const currency = (amount: number) => `Ksh ${Number(amount || 0).toLocaleString('en-KE')}`;
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-charcoal/40 backdrop-blur-sm" />
+      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="relative w-full max-w-5xl modal-surface rounded-2xl shadow-2xl p-8 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h3 className="text-2xl font-serif text-charcoal">Graduated Students</h3>
+            <p className="text-sm text-charcoal/50">Enrollments marked as graduated after fee completion.</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-charcoal/5 rounded-full"><X size={20} /></button>
+        </div>
+
+        {loading && (
+          <div className="p-4 rounded-xl bg-charcoal/[0.02] text-charcoal/50 text-sm">
+            Loading graduated students...
+          </div>
+        )}
+        {error && (
+          <div className="p-3 rounded-xl bg-danger-muted/10 text-danger-muted text-sm mb-4">
+            {error}
+          </div>
+        )}
+        {!loading && !error && (
+          <div className="glass-card p-4">
+            <div className="max-h-[60vh] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-charcoal/40 uppercase tracking-widest">
+                    <th className="text-left pb-2">Student</th>
+                    <th className="text-left pb-2">Program</th>
+                    <th className="text-left pb-2">Course</th>
+                    <th className="text-left pb-2">Level</th>
+                    <th className="text-left pb-2">Enrollment Date</th>
+                    <th className="text-left pb-2">Total Fee</th>
+                  </tr>
+                </thead>
+                <tbody className="text-charcoal/70">
+                  {rows.map((row: any) => (
+                    <tr key={row.id} className="border-t border-charcoal/5">
+                      <td className="py-2">
+                        <div className="font-semibold text-charcoal">{row.studentName}</div>
+                        <div className="text-[10px] text-charcoal/40">{row.studentEmail}</div>
+                      </td>
+                      <td className="py-2">{row.programType || '-'}</td>
+                      <td className="py-2">{row.courseName}</td>
+                      <td className="py-2">{row.level}</td>
+                      <td className="py-2">{row.enrollmentDate}</td>
+                      <td className="py-2 font-semibold">{currency(row.totalFee)}</td>
+                    </tr>
+                  ))}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-3 text-charcoal/40">No graduated students yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }

@@ -76,8 +76,8 @@ export default function TeacherManagement() {
         }
         savedTeacher = await dataService.addTeacher({
           ...payload,
-          courses: [],
-          active: true
+          courses: Array.isArray(payload.courses) ? payload.courses : [],
+          active: payload.active ?? true
         });
         await dataService.adminUpsertTeacherAuth({
           teacherId: savedTeacher.id,

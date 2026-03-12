@@ -43,10 +43,32 @@ class DataService{
   private async invokeAdminTeacherAuth(body:any){
     return await this.invokeEdgeFunction('admin-teacher-auth',body,'Teacher auth action failed');
   }
-  private async gradSnap(id:string){const {data:e,error:ee}=await supabase.from('enrollments').select('id,status,total_fee').eq('id',id).single();if(ee||!e)throw ee||new Error('Enrollment not found.');const [p,g]=await Promise.all([supabase.from('payments').select('amount').eq('enrollment_id',id),supabase.from('grades').select('assessment_type').eq('enrollment_id',id)]);if(p.error)throw p.error;if(g.error)throw g.error;const paid=(p.data||[]).reduce((s:any,r:any)=>s+(+r.amount||0),0),fee=+e.total_fee||0,b=Math.max(fee-paid,0),t=(g.data||[]).map((r:any)=>String(r.assessment_type||'').toUpperCase());return{status:e.status,balance:b,hasExam:t.includes('EXAM'),hasAssessment:t.some((x:string)=>x!=='EXAM')}}
-  private gradReasons(s:any){const r=[] as string[];if(s.status==='GRADUATED')r.push('Already graduated.');if(s.status==='DROPOUT')r.push('Enrollment is marked as dropout.');if(s.balance>0)r.push('Outstanding fee balance must be zero.');if(!s.hasAssessment)r.push('At least one assessment grade is required.');if(!s.hasExam)r.push('At least one exam grade is required.');return r;}
+  private async gradSnap(id:string){
+    const {data:e,error:ee}=await supabase.from('enrollments').select('id,status,fee_balance').eq('id',id).single();
+    if(ee||!e)throw ee||new Error('Enrollment not found.');
+    const b=Math.max(+e.fee_balance||0,0);
+    return{status:e.status,balance:b};
+  }
+  private gradReasons(s:any){
+    const r=[] as string[];
+    if(s.status==='GRADUATED')r.push('Already graduated.');
+    if(s.status==='DROPOUT')r.push('Enrollment is marked as dropout.');
+    if(s.balance>0)r.push('Outstanding fee balance must be zero.');
+    return r;
+  }
   async markEnrollmentAsGraduated(id:string){const s=await this.gradSnap(id),r=this.gradReasons(s);if(r.length)throw new Error(`Cannot graduate enrollment: ${r.join(' ')}`);const {error}=await supabase.from('enrollments').update({status:'GRADUATED',payment_status:'PAID',fee_balance:0}).eq('id',id);if(error)throw error;}
-  async autoGraduateEligibleEnrollments(){const {data,error}=await supabase.from('enrollments').select('id').eq('status','ACTIVE');if(error)throw error;const ids=(data||[]).map((x:any)=>x.id as string);if(!ids.length)return{graduatedCount:0,reviewedCount:0};const ok=[] as string[];for(const id of ids){const s=await this.gradSnap(id);if(this.gradReasons(s).length===0)ok.push(id);}if(ok.length){const {error:e}=await supabase.from('enrollments').update({status:'GRADUATED',payment_status:'PAID',fee_balance:0}).in('id',ok);if(e)throw e;}return{graduatedCount:ok.length,reviewedCount:ids.length};}
+  async autoGraduateEligibleEnrollments(){
+    const {data,error}=await supabase.from('enrollments').select('id,fee_balance').eq('status','ACTIVE');
+    if(error)throw error;
+    const rows=data||[];
+    if(!rows.length)return{graduatedCount:0,reviewedCount:0};
+    const ok=rows.filter((x:any)=>Math.max(+x.fee_balance||0,0)===0).map((x:any)=>x.id as string);
+    if(ok.length){
+      const {error:e}=await supabase.from('enrollments').update({status:'GRADUATED',payment_status:'PAID',fee_balance:0}).in('id',ok);
+      if(e)throw e;
+    }
+    return{graduatedCount:ok.length,reviewedCount:rows.length};
+  }
   async getPrograms(){const {data,error}=await supabase.from('programs').select('*').order('label');if(error)throw error;return (data||[]).map((p:any)=>({id:p.id,label:p.label,iconName:p.icon_name,color:p.color,defaultLevels:p.default_levels||[]})) as Program[];}
   async addProgram(p:any){const id=p.label.toUpperCase().replace(/\s+/g,'_');const a:any={id,label:p.label,icon_name:p.iconName,color:p.color};if(p.defaultLevels?.length)a.default_levels=p.defaultLevels;let {data,error}=await supabase.from('programs').insert([a]).select().single();if(error&&a.default_levels){delete a.default_levels;const r=await supabase.from('programs').insert([a]).select().single();data=r.data;error=r.error;}if(error)throw error;return{id:data.id,label:data.label,iconName:data.icon_name,color:data.color,defaultLevels:data.default_levels||[]} as Program;}
   async updateProgram(id:string,d:any){const a:any={};if(d.label!==undefined)a.label=d.label;if(d.iconName!==undefined)a.icon_name=d.iconName;if(d.color!==undefined)a.color=d.color;if(d.defaultLevels!==undefined)a.default_levels=d.defaultLevels;let {data,error}=await supabase.from('programs').update(a).eq('id',id).select().single();if(error&&Object.prototype.hasOwnProperty.call(a,'default_levels')){delete a.default_levels;const r=await supabase.from('programs').update(a).eq('id',id).select().single();data=r.data;error=r.error;}if(error)throw error;return{id:data.id,label:data.label,iconName:data.icon_name,color:data.color,defaultLevels:data.default_levels||[]} as Program;}
@@ -166,6 +188,30 @@ class DataService{
       return{id:x.id,name:x.name,email:x.email,phone:x.phone,identification:x.identification,nextOfKin:x.next_of_kin,enrollments:e} as Student;
     });
     return s.filter((x:any)=>x.enrollments.length>0||!user||user.role==='ADMIN');
+  }
+  async getGraduatedEnrollments(){
+    const {data,error}=await supabase
+      .from('enrollments')
+      .select('id,student_id,program_type,course_name,level,enrollment_date,total_fee,fee_balance,payment_status,students (name,email)')
+      .eq('status','GRADUATED')
+      .order('enrollment_date',{ascending:false});
+    if(error)throw error;
+    return (data||[]).map((e:any)=>{
+      const s=Array.isArray(e.students)?e.students[0]:e.students;
+      return{
+        id:e.id,
+        studentId:e.student_id,
+        studentName:s?.name||'Unknown Student',
+        studentEmail:s?.email||'',
+        programType:e.program_type||'',
+        courseName:e.course_name||'',
+        level:e.level||'',
+        enrollmentDate:e.enrollment_date||'',
+        totalFee:+e.total_fee||0,
+        feeBalance:+e.fee_balance||0,
+        paymentStatus:e.payment_status||'PAID'
+      };
+    });
   }
   async getStudentById(id:string,user?:User){
     const {data:x,error}=await supabase
