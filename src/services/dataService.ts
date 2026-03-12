@@ -213,6 +213,21 @@ class DataService{
       };
     });
   }
+  async getTeacherById(id:string){
+    if(!id)return null;
+    const {data,error}=await supabase.from('teachers').select('*').eq('id',id).maybeSingle();
+    if(error)throw error;
+    if(!data)return null;
+    return{...data,idNumber:data.id_number,courses:Array.isArray(data.courses)?data.courses:[]} as Teacher;
+  }
+  async getTeacherByEmail(email:string){
+    const cleaned=String(email||'').trim();
+    if(!cleaned)return null;
+    const {data,error}=await supabase.from('teachers').select('*').ilike('email',cleaned).maybeSingle();
+    if(error)throw error;
+    if(!data)return null;
+    return{...data,idNumber:data.id_number,courses:Array.isArray(data.courses)?data.courses:[]} as Teacher;
+  }
   async getStudentById(id:string,user?:User){
     const {data:x,error}=await supabase
       .from('students')

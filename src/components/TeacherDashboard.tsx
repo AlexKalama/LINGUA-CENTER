@@ -3,7 +3,7 @@ import { Users, AlertCircle, Clock, X, CheckCircle2, Calendar, BookOpen } from '
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { dataService } from '../services/dataService';
-import { User, Student, Enrollment } from '../types';
+import { User, Student, Enrollment, Course, Teacher } from '../types';
 
 interface TeacherDashboardProps {
   user: User;
@@ -41,6 +41,8 @@ const StatCard = ({ title, value, icon: Icon, color }: any) => (
 
 export default function TeacherDashboard({ user }: TeacherDashboardProps) {
   const [students, setStudents] = useState<Student[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [teacherProfile, setTeacherProfile] = useState<Teacher | null>(null);
   const [bundle, setBundle] = useState<AcademicBundle>({});
   const [loading, setLoading] = useState(true);
   const [selectedCourseKey, setSelectedCourseKey] = useState<string>('');
@@ -73,11 +75,83 @@ export default function TeacherDashboard({ user }: TeacherDashboardProps) {
     fetchData();
   }, [user.id, user.teacherId]);
 
+  useEffect(() => {
+    async function fetchCourses() {
+      try {
+        const list = await dataService.getCourses();
+        setCourses(list);
+      } catch (error) {
+        console.error('Error fetching courses:', error);
+      }
+    }
+    fetchCourses();
+  }, []);
+
+  useEffect(() => {
+    async function fetchTeacherProfile() {
+      try {
+        let profile: Teacher | null = null;
+        if (user.teacherId) {
+          profile = await dataService.getTeacherById(user.teacherId);
+        }
+        if (!profile && user.email) {
+          profile = await dataService.getTeacherByEmail(user.email);
+        }
+        setTeacherProfile(profile);
+      } catch (error) {
+        console.error('Error fetching teacher profile:', error);
+      }
+    }
+    fetchTeacherProfile();
+  }, [user.teacherId, user.email]);
+
   const courseGroups = useMemo<CourseGroup[]>(() => {
     const map = new Map<string, CourseGroup>();
+    const assignments = Array.isArray(teacherProfile?.courses) ? teacherProfile!.courses : [];
+
+    const resolveAssignment = (assignment: string) => {
+      const normalized = String(assignment || '').trim();
+      if (!normalized) return null;
+      const match = courses.find(course => normalized.toLowerCase().startsWith(course.name.toLowerCase()));
+      let courseName = match?.name || normalized;
+      let level = '';
+      if (match) {
+        level = normalized.slice(match.name.length).trim();
+      }
+      if (!level) {
+        const parts = normalized.split(' ');
+        if (parts.length > 1) {
+          level = parts.pop() || '';
+          courseName = parts.join(' ');
+        }
+      }
+      return {
+        courseId: match?.id || '',
+        courseName,
+        level,
+        programType: match?.programType || ''
+      };
+    };
+
+    assignments.forEach(assignment => {
+      const resolved = resolveAssignment(assignment);
+      if (!resolved) return;
+      const key = `${resolved.courseId || resolved.courseName}::${resolved.level || 'LEVEL'}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          courseId: resolved.courseId,
+          courseName: resolved.courseName,
+          level: resolved.level,
+          programType: resolved.programType,
+          rows: []
+        });
+      }
+    });
+
     for (const student of students) {
       for (const enrollment of student.enrollments) {
-        const key = `${enrollment.courseId}::${enrollment.level}`;
+        const key = `${enrollment.courseId || enrollment.courseName}::${enrollment.level}`;
         if (!map.has(key)) {
           map.set(key, {
             key,
@@ -92,7 +166,7 @@ export default function TeacherDashboard({ user }: TeacherDashboardProps) {
       }
     }
     return Array.from(map.values()).sort((a, b) => a.courseName.localeCompare(b.courseName));
-  }, [students]);
+  }, [students, courses, teacherProfile]);
 
   useEffect(() => {
     if (!selectedCourseKey && courseGroups.length > 0) {
@@ -144,7 +218,7 @@ export default function TeacherDashboard({ user }: TeacherDashboardProps) {
                 }`}
               >
                 <p className="font-semibold text-charcoal">{group.courseName}</p>
-                <p className="text-xs text-charcoal/50 mt-1">{group.programType} - {group.level}</p>
+                <p className="text-xs text-charcoal/50 mt-1">{group.programType || 'Program'} - {group.level || 'Level'}</p>
                 <p className="text-xs text-charcoal/40 mt-2">{group.rows.length} student(s)</p>
               </button>
             ))}
@@ -164,7 +238,8 @@ export default function TeacherDashboard({ user }: TeacherDashboardProps) {
                 </div>
                 <button
                   onClick={() => setShowAttendanceModal(true)}
-                  className="btn-primary flex items-center gap-2 self-start"
+                  className="btn-primary flex items-center gap-2 self-start disabled:opacity-50"
+                  disabled={selectedCourse.rows.length === 0}
                 >
                   <Clock size={18} />
                   Mark Attendance
@@ -180,6 +255,11 @@ export default function TeacherDashboard({ user }: TeacherDashboardProps) {
               </div>
 
               <div className="space-y-4">
+                {selectedCourse.rows.length === 0 && (
+                  <div className="p-4 rounded-xl bg-charcoal/5 text-sm text-charcoal/50">
+                    No enrolled students for this course yet.
+                  </div>
+                )}
                 {selectedCourse.rows.map(({ student, enrollment }) => {
                   const data = bundle[enrollment.id] || { grades: [], insights: [], certificates: [], overallGrade: 0 };
                   return (
