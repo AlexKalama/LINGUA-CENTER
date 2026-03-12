@@ -95,7 +95,48 @@ class DataService{
   }
   async addTeacher(t:any){const {data,error}=await supabase.from('teachers').insert([{name:t.name,email:t.email,phone:t.phone,id_number:t.idNumber,courses:t.courses,active:t.active}]).select().single();if(error)throw error;return{...data,idNumber:data.id_number} as Teacher;}
   async updateTeacher(id:string,d:any){const a:any={...d};if(d.idNumber!==undefined){a.id_number=d.idNumber;delete a.idNumber;}const {data,error}=await supabase.from('teachers').update(a).eq('id',id).select().single();if(error)throw error;return{...data,idNumber:data.id_number} as Teacher;}
-  async deleteTeacher(id:string){const {error}=await supabase.from('teachers').delete().eq('id',id);if(error)throw error;}
+  async deleteTeacher(id:string){
+    if(!id)throw new Error('Teacher ID is required.');
+
+    const {data:enrollments,error:enrollmentsError}=await supabase
+      .from('enrollments')
+      .select('id')
+      .eq('teacher_id',id);
+    if(enrollmentsError)throw enrollmentsError;
+    if((enrollments||[]).length){
+      const {error:updateError}=await supabase
+        .from('enrollments')
+        .update({teacher_id:null,teacher_name:'Unassigned'})
+        .eq('teacher_id',id);
+      if(updateError){
+        const message=String((updateError as any)?.message||'');
+        if(message.toLowerCase().includes('invalid teacher_id')){
+          throw new Error('Your database is rejecting NULL teacher_id. Make enrollments.teacher_id nullable and set the FK to ON DELETE SET NULL, then try again.');
+        }
+        throw updateError;
+      }
+    }
+
+    try{
+      await this.invokeAdminTeacherAuth({action:'delete_teacher_auth',teacherId:id});
+    }catch(error){
+      // Continue with teacher deletion even if auth user doesn't exist.
+      const message=String((error as Error)?.message||'');
+      const lower=message.toLowerCase();
+      if(lower.includes('no auth user')) {
+        // ok to proceed
+      } else if (message.includes('(404') || lower.includes('not found')) {
+        throw new Error('Teacher auth function is not available. Deploy the Supabase edge function `admin-teacher-auth` and try again.');
+      } else if (lower.includes('admin access required')) {
+        throw new Error('Admin access required. Ensure your profile role is ADMIN in Supabase and try again.');
+      } else {
+        throw error;
+      }
+    }
+
+    const {error}=await supabase.from('teachers').delete().eq('id',id);
+    if(error)throw error;
+  }
   async getStudents(user?:User){
     const {data,error}=await supabase.from('students').select('*, enrollments (*)');
     if(error)throw error;
@@ -194,9 +235,91 @@ class DataService{
   async addStudent(s:any){const {data,error}=await supabase.from('students').insert([{name:s.name,email:s.email,phone:s.phone,identification:s.identification,next_of_kin:s.nextOfKin}]).select().single();if(error)throw error;return{...data,nextOfKin:data.next_of_kin,enrollments:[]} as Student;}
   async deleteStudent(id:string){const {error}=await supabase.from('students').delete().eq('id',id);if(error)throw error;}
   async updateStudent(id:string,d:any){const a:any={...d};if(d.nextOfKin){a.next_of_kin=d.nextOfKin;delete a.nextOfKin;}const {data,error}=await supabase.from('students').update(a).eq('id',id).select().single();if(error)throw error;return{...data,nextOfKin:data.next_of_kin} as Student;}
-  async getGlobalStats(){const [eRes,pRes]=await Promise.all([supabase.from('enrollments').select('id,status,enrollment_date,fee_balance'),supabase.from('payments').select('amount')]);if(eRes.error)throw eRes.error;if(pRes.error)throw pRes.error;const m=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().split('T')[0],n=(eRes.data||[]).map((e:any)=>({s:e.status,d:e.enrollment_date,o:Math.max(+e.fee_balance||0,0)})),totalRevenue=(pRes.data||[]).reduce((a:any,x:any)=>a+(+x.amount||0),0);return{totalActiveStudents:n.filter((x:any)=>x.s==='ACTIVE').length,totalGraduates:n.filter((x:any)=>x.s==='GRADUATED').length,totalDropouts:n.filter((x:any)=>x.s==='DROPOUT').length,totalRevenue,totalOutstanding:n.reduce((a:any,x:any)=>a+x.o,0),newEnrollmentsThisMonth:n.filter((x:any)=>x.d>=m).length};}
+  async getGlobalStats(){
+    const [eRes,pRes]=await Promise.all([
+      supabase.from('enrollments').select('student_id,status,enrollment_date,fee_balance'),
+      supabase.from('payments').select('amount')
+    ]);
+    if(eRes.error)throw eRes.error;
+    if(pRes.error)throw pRes.error;
+
+    const monthStart=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().split('T')[0];
+    const enrollments=(eRes.data||[]).map((e:any)=>({
+      studentId:String(e.student_id||'').trim(),
+      status:String(e.status||'').toUpperCase(),
+      date:e.enrollment_date,
+      outstanding:Math.max(+e.fee_balance||0,0)
+    })).filter((e:any)=>e.studentId);
+
+    const totalRevenue=(pRes.data||[]).reduce((a:any,x:any)=>a+(+x.amount||0),0);
+    const totalOutstanding=enrollments.reduce((a:any,x:any)=>a+x.outstanding,0);
+
+    const statusByStudent=new Map<string,Set<string>>();
+    const firstEnrollmentByStudent=new Map<string,string>();
+
+    enrollments.forEach((e:any)=>{
+      const set=statusByStudent.get(e.studentId)||new Set<string>();
+      set.add(e.status);
+      statusByStudent.set(e.studentId,set);
+
+      if(e.date){
+        const prev=firstEnrollmentByStudent.get(e.studentId);
+        if(!prev || String(e.date) < prev){
+          firstEnrollmentByStudent.set(e.studentId,String(e.date));
+        }
+      }
+    });
+
+    let totalActiveStudents=0;
+    let totalGraduates=0;
+    let totalDropouts=0;
+    statusByStudent.forEach((set)=>{
+      if(set.has('ACTIVE')){
+        totalActiveStudents+=1;
+        return;
+      }
+      if(set.has('GRADUATED')){
+        totalGraduates+=1;
+        return;
+      }
+      if(set.has('DROPOUT')){
+        totalDropouts+=1;
+      }
+    });
+
+    let newEnrollmentsThisMonth=0;
+    firstEnrollmentByStudent.forEach((date)=>{
+      if(date>=monthStart)newEnrollmentsThisMonth+=1;
+    });
+
+    return{
+      totalActiveStudents,
+      totalGraduates,
+      totalDropouts,
+      totalRevenue,
+      totalOutstanding,
+      newEnrollmentsThisMonth
+    };
+  }
   async getRevenueData(){const {data,error}=await supabase.from('payments').select('amount,date');if(error)throw error;const w=months(M),m=new Map(w.map(x=>[x.key,0]));(data||[]).forEach((p:any)=>{const k=String(p.date||'').slice(0,7);if(m.has(k))m.set(k,(m.get(k)||0)+(+p.amount||0));});return w.map(x=>({name:x.label,revenue:m.get(x.key)||0}));}
-  async getEnrollmentData(){const {data,error}=await supabase.from('enrollments').select('enrollment_date');if(error)throw error;const w=months(M),m=new Map(w.map(x=>[x.key,0]));(data||[]).forEach((e:any)=>{const k=String(e.enrollment_date||'').slice(0,7);if(m.has(k))m.set(k,(m.get(k)||0)+1);});return w.map(x=>({name:x.label,students:m.get(x.key)||0}));}
+  async getEnrollmentData(){
+    const {data,error}=await supabase.from('enrollments').select('student_id,enrollment_date');
+    if(error)throw error;
+    const w=months(M),m=new Map(w.map(x=>[x.key,0]));
+    const firstByStudent=new Map<string,string>();
+    (data||[]).forEach((e:any)=>{
+      const studentId=String(e.student_id||'').trim();
+      const date=String(e.enrollment_date||'').trim();
+      if(!studentId||!date)return;
+      const prev=firstByStudent.get(studentId);
+      if(!prev || date<prev)firstByStudent.set(studentId,date);
+    });
+    Array.from(firstByStudent.values()).forEach((date)=>{
+      const k=date.slice(0,7);
+      if(m.has(k))m.set(k,(m.get(k)||0)+1);
+    });
+    return w.map(x=>({name:x.label,students:m.get(x.key)||0}));
+  }
   async getRecentTransactions(limit=50){const {data,error}=await supabase.from('payments').select('id,enrollment_id,amount,date,method,reference,enrollments (id,course_name,program_type,level,total_fee,fee_balance,payment_status,students (name,email))').order('date',{ascending:false}).limit(limit);if(error)throw error;const tx=data||[];return tx.map((p:any)=>{const e=Array.isArray(p.enrollments)?p.enrollments[0]:p.enrollments,s=Array.isArray(e?.students)?e.students[0]:e?.students,st=(e?.payment_status||'PENDING') as 'PAID'|'PARTIAL'|'PENDING';return{id:p.id,enrollmentId:p.enrollment_id,student:s?.name||'Unknown Student',studentEmail:s?.email||'',courseName:e?.course_name||'Unknown Course',programName:e?.program_type||'',level:e?.level||'',amount:+p.amount||0,date:p.date,method:p.method,reference:p.reference||'',status:st,totalFee:+e?.total_fee||0,feeBalance:+e?.fee_balance||0};});}
   async addEnrollmentToStudent(studentId:string,e:any){
     const {data,error}=await supabase.from('enrollments').insert([{student_id:studentId,program_type:e.programType,course_id:e.courseId,course_name:e.courseName,level:e.level,teacher_id:e.teacherId,teacher_name:e.teacherName,status:e.status,fee_balance:e.feeBalance,total_fee:e.totalFee,enrollment_date:e.enrollmentDate,payment_status:e.paymentStatus}]).select().single();

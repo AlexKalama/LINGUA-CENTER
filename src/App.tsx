@@ -14,6 +14,13 @@ import Financials from './components/Financials';
 import { AlertCircle } from 'lucide-react';
 import { supabase } from './lib/supabase';
 
+const ADMIN_EMAIL_ALLOWLIST = [
+  'linguavocational@gmail.com',
+  'linguacentre2013@gmail.com'
+];
+const normalizeEmail = (value: string) => value.trim().toLowerCase();
+const isAdminEmailAllowed = (value: string) => ADMIN_EMAIL_ALLOWLIST.includes(normalizeEmail(value));
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,6 +101,12 @@ export default function App() {
         const role = data.role as UserRole | null;
         if (role !== 'ADMIN' && role !== 'TEACHER') {
           console.error('Profile role is missing or invalid. Sign in is blocked until an ADMIN sets a valid role.');
+          await supabase.auth.signOut();
+          setUser(null);
+          return;
+        }
+        if (role === 'ADMIN' && !isAdminEmailAllowed(email)) {
+          console.error('This email is not authorized for admin access.');
           await supabase.auth.signOut();
           setUser(null);
           return;

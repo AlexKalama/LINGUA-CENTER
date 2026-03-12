@@ -5,6 +5,13 @@ import { supabase } from '../lib/supabase';
 
 type AccessRole = 'ADMIN' | 'TEACHER';
 
+const ADMIN_EMAIL_ALLOWLIST = [
+  'linguavocational@gmail.com',
+  'linguacentre2013@gmail.com'
+];
+const normalizeEmail = (value: string) => value.trim().toLowerCase();
+const isAdminEmailAllowed = (value: string) => ADMIN_EMAIL_ALLOWLIST.includes(normalizeEmail(value));
+
 export default function Login() {
   const [role, setRole] = useState<AccessRole>('ADMIN');
   const [email, setEmail] = useState('');
@@ -43,9 +50,12 @@ export default function Login() {
     try {
       if (!email.trim()) throw new Error('Enter your email address first.');
       if (!password) throw new Error('Enter your password.');
+      if (role === 'ADMIN' && !isAdminEmailAllowed(email)) {
+        throw new Error('This email is not authorized for admin access.');
+      }
 
       const { error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
+        email: normalizeEmail(email),
         password
       });
 
@@ -63,9 +73,12 @@ export default function Login() {
 
     try {
       if (!email.trim()) throw new Error('Enter your email address first.');
+      if (role === 'ADMIN' && !isAdminEmailAllowed(email)) {
+        throw new Error('This email is not authorized for admin access.');
+      }
 
       const { error: sendError } = await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
+        email: normalizeEmail(email),
         options: { shouldCreateUser: false }
       });
 
@@ -85,12 +98,15 @@ export default function Login() {
 
     try {
       if (!email.trim()) throw new Error('Enter your email address first.');
+      if (role === 'ADMIN' && !isAdminEmailAllowed(email)) {
+        throw new Error('This email is not authorized for admin access.');
+      }
       if (!otpCode.trim()) throw new Error('Enter OTP code.');
       if (!newPassword || newPassword.length < 6) throw new Error('New password must be at least 6 characters.');
       if (newPassword !== confirmPassword) throw new Error('Passwords do not match.');
 
       const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: email.trim().toLowerCase(),
+        email: normalizeEmail(email),
         token: otpCode.trim(),
         type: 'email'
       });

@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { 
   Plus, 
-  Users, 
-  BookOpen, 
   Mail, 
   Trash2,
   Edit2,
@@ -58,6 +56,7 @@ export default function TeacherManagement() {
         await fetchTeachers();
       } catch (error) {
         console.error('Error deleting teacher:', error);
+        alert((error as any)?.message || 'Failed to delete teacher.');
       }
     }
   };
@@ -164,23 +163,6 @@ export default function TeacherManagement() {
               >
                 View Assigned Students <ChevronRight size={14} />
               </button>
-            </div>
-
-            <div className="flex-1 grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
-                <div className="flex items-center gap-2 text-charcoal/30 mb-1">
-                  <Users size={14} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Active Students</span>
-                </div>
-                <p className="text-xl font-serif text-charcoal">{teacher.stats.totalStudents}</p>
-              </div>
-              <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
-                <div className="flex items-center gap-2 text-charcoal/30 mb-1">
-                  <BookOpen size={14} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Active Classes</span>
-                </div>
-                <p className="text-xl font-serif text-charcoal">{teacher.stats.activeClasses}</p>
-              </div>
             </div>
 
             <div className="absolute bottom-4 right-4 flex gap-2">

@@ -2,7 +2,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 type Payload = {
-  action: 'upsert_teacher_auth' | 'reset_teacher_password';
+  action: 'upsert_teacher_auth' | 'reset_teacher_password' | 'delete_teacher_auth';
   teacherId: string;
   email?: string;
   name?: string;
@@ -169,6 +169,17 @@ Deno.serve(async (req) => {
         .eq('id', teacher.id);
 
       return json(200, { ok: true, mode: 'reset', userId: existing.id, email: teacherEmail });
+    }
+
+    if (payload.action === 'delete_teacher_auth') {
+      if (!existing?.id) {
+        return json(200, { ok: true, mode: 'delete', userId: null, email: teacherEmail, message: 'No auth user to delete.' });
+      }
+
+      const deleteRes = await admin.auth.admin.deleteUser(existing.id);
+      if (deleteRes.error) return json(500, { error: deleteRes.error.message });
+
+      return json(200, { ok: true, mode: 'delete', userId: existing.id, email: teacherEmail });
     }
 
     return json(400, { error: 'Unknown action.' });
