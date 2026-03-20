@@ -363,7 +363,7 @@ export default function Financials() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
         <div className="glass-card p-5">
           <div className="flex justify-between items-start mb-4">
             <div className="p-2.5 rounded-xl bg-navy/10 text-navy">
@@ -411,7 +411,7 @@ export default function Financials() {
         </div>
       </div>
 
-      <div className="glass-card p-8">
+      <div className="glass-card p-8 overflow-hidden">
         <div className="flex justify-between items-center mb-8">
           <h3 className="text-xl font-serif text-charcoal">Revenue Performance (Last 6 Months)</h3>
         </div>

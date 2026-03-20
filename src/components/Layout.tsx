@@ -174,7 +174,7 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
       </aside>
 
       {/* Main Content */}
-      <main className={`flex-1 transition-all duration-300 ml-0 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
+      <main className={`flex-1 transition-all duration-300 ml-0 overflow-x-hidden ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
         {/* Header */}
         <header className="h-20 bg-white/50 backdrop-blur-md border-b border-charcoal/5 flex items-center justify-between px-4 sm:px-6 lg:px-8 sticky top-0 z-40">
           <div className="flex items-center gap-4">
