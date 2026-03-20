@@ -48,6 +48,22 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
     }
   }, [isDarkMode]);
 
+  useEffect(() => {
+    let isMounted = true;
+    dataService.getNotifications(user.role)
+      .then((data) => {
+        if (!isMounted) return;
+        setNotifications(data);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setNotifications([]);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [user.role]);
+
   const openNotifications = async () => {
     const nextOpen = !showNotifications;
     setShowNotifications(nextOpen);
@@ -79,6 +95,7 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
   ];
 
   const navItems = user.role === 'ADMIN' ? adminNav : teacherNav;
+  const hasNotifications = notifications.length > 0;
 
   const handleMenuToggle = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -188,7 +205,9 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
             <div className="relative">
               <button onClick={openNotifications} className="relative p-2 text-charcoal/60 hover:bg-charcoal/5 rounded-lg">
               <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-danger-muted rounded-full border-2 border-white"></span>
+              {hasNotifications && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-danger-muted rounded-full border-2 border-white"></span>
+              )}
               </button>
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-[90vw] max-w-sm sm:w-96 popover-surface shadow-2xl rounded-xl z-50 overflow-hidden">

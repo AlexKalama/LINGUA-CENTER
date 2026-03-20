@@ -22,6 +22,9 @@ export default function EnrollmentFlow({ onClose }: EnrollmentFlowProps) {
     idType: 'National ID',
     idNumber: '',
     dob: '',
+    gender: '' as '' | 'M' | 'F',
+    healthConditions: [] as string[],
+    healthOther: '',
     kinName: '',
     kinPhone: '',
     programId: '',
@@ -124,7 +127,7 @@ export default function EnrollmentFlow({ onClose }: EnrollmentFlowProps) {
   const isStepValid = () => {
     switch (step) {
       case 1:
-        return formData.fullName && formData.email && formData.phone && formData.idNumber && formData.dob && formData.kinName && formData.kinPhone;
+        return formData.fullName && formData.email && formData.phone && formData.idNumber && formData.dob && formData.kinName && formData.kinPhone && formData.gender;
       case 2:
         const selected = courses.find(course => course.id === formData.courseId);
         const hasFeeConfigured = selected ? hasLevelFeeConfig(selected.levelFees, formData.level) : false;
@@ -163,6 +166,11 @@ export default function EnrollmentFlow({ onClose }: EnrollmentFlowProps) {
         identification: {
           type: formData.idType as any,
           number: formData.idNumber
+        },
+        gender: formData.gender,
+        healthConditions: {
+          conditions: formData.healthConditions,
+          other: formData.healthOther.trim()
         },
         nextOfKin: {
           name: formData.kinName,
@@ -343,6 +351,63 @@ export default function EnrollmentFlow({ onClose }: EnrollmentFlowProps) {
                     value={formData.dob}
                     onChange={e => setFormData({...formData, dob: e.target.value})}
                   />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-charcoal/50 uppercase tracking-wider">Gender Identification</label>
+                  <div className="flex gap-3">
+                    {[
+                      { label: 'Male', value: 'M' },
+                      { label: 'Female', value: 'F' }
+                    ].map(option => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, gender: option.value as 'M' | 'F' })}
+                        className={`flex-1 p-3 rounded-xl border text-sm font-bold transition-all ${
+                          formData.gender === option.value
+                            ? 'border-navy bg-navy/5 text-navy'
+                            : 'border-charcoal/10 text-charcoal/60 hover:border-sage hover:bg-sage/5'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-charcoal/50 uppercase tracking-wider">Special Health Conditions</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Asthma', 'T.B (Tuberculosis)', 'Epilepsy', 'Other'].map(condition => {
+                      const checked = formData.healthConditions.includes(condition);
+                      return (
+                        <label key={condition} className="flex items-center gap-2 text-xs text-charcoal/60">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = e.target.checked
+                                ? [...formData.healthConditions, condition]
+                                : formData.healthConditions.filter(item => item !== condition);
+                              setFormData({ ...formData, healthConditions: next });
+                            }}
+                            className="rounded text-sage focus:ring-sage"
+                          />
+                          {condition}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {formData.healthConditions.includes('Other') && (
+                    <input
+                      type="text"
+                      className="input-field mt-2"
+                      placeholder="Specify other condition"
+                      value={formData.healthOther}
+                      onChange={(e) => setFormData({ ...formData, healthOther: e.target.value })}
+                    />
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-6">

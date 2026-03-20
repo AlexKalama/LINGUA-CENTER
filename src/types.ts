@@ -126,6 +126,7 @@ export interface Enrollment {
   totalFee: number;
   enrollmentDate: string;
   paymentStatus: 'PAID' | 'PARTIAL' | 'PENDING';
+  registrationNumber?: string;
   payments: Payment[];
   feeItems?: EnrollmentFeeItem[];
   attendance: Attendance[];
@@ -157,6 +158,11 @@ export interface Student {
   nextOfKin: {
     name: string;
     phone: string;
+  };
+  gender?: 'M' | 'F' | '';
+  healthConditions?: {
+    conditions: string[];
+    other?: string;
   };
   enrollments: Enrollment[];
 }

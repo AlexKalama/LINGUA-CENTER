@@ -4,10 +4,12 @@ export interface ReceiptPdfInput {
   receiptNumber?: string;
   studentName: string;
   studentEmail?: string;
+  studentPhone?: string;
   programName?: string;
   courseName: string;
   level?: string;
   enrollmentId?: string;
+  registrationNumber?: string;
   transactionId?: string;
   transactionDate: string;
   paymentMethod: string;
@@ -84,11 +86,13 @@ export const downloadReceiptPdf = (input: ReceiptPdfInput) => {
 
   leftY = drawMetaField(doc, 'Student Name', toText(input.studentName) || '-', margin, leftY, colWidth);
   leftY = drawMetaField(doc, 'Student Email', toText(input.studentEmail) || '-', margin, leftY, colWidth);
+  leftY = drawMetaField(doc, 'Telephone', toText(input.studentPhone) || '-', margin, leftY, colWidth);
   leftY = drawMetaField(doc, 'Program', toText(input.programName) || '-', margin, leftY, colWidth);
 
   rightY = drawMetaField(doc, 'Course', toText(input.courseName) || '-', rightX, rightY, colWidth);
   rightY = drawMetaField(doc, 'Level', toText(input.level) || '-', rightX, rightY, colWidth);
   rightY = drawMetaField(doc, 'Enrollment ID', toText(input.enrollmentId) || '-', rightX, rightY, colWidth);
+  rightY = drawMetaField(doc, 'Registration No', toText(input.registrationNumber) || '-', rightX, rightY, colWidth);
 
   let y = Math.max(leftY, rightY) + 10;
   doc.setFont('helvetica', 'bold');

@@ -141,10 +141,11 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       setActionError(null);
       setActionMessage(null);
 
-      const [globalStats, transactions, students] = await Promise.all([
+      const [globalStats, transactions, students, misc] = await Promise.all([
         dataService.getGlobalStats(),
         dataService.getRecentTransactions(500),
-        dataService.getStudents(user)
+        dataService.getStudents(user),
+        dataService.getMiscExpenditures(5000)
       ]);
 
       const now = new Date();
@@ -159,6 +160,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       });
 
       const monthTransactions = transactions.filter((tx: any) => String(tx.date || '').startsWith(monthKey));
+      const monthExpenses = misc.filter((row: any) => String(row.date || '').startsWith(monthKey));
       const monthEnrollments = students
         .flatMap(student => student.enrollments.map(enrollment => ({ student: student.name, ...enrollment })))
         .filter(enrollment => String(enrollment.enrollmentDate || '').startsWith(monthKey));
@@ -188,6 +190,10 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         if (status === 'ACTIVE') return 'status-partial';
         return 'status-pending';
       };
+
+      const monthExpenseTotal = monthExpenses.reduce((sum: number, row: any) => sum + (+row.amount || 0), 0);
+      const monthRevenueTotal = monthTransactions.reduce((sum: number, row: any) => sum + (+row.amount || 0), 0);
+      const monthNet = monthRevenueTotal - monthExpenseTotal;
 
       const html = `<!DOCTYPE html>
 <html>
@@ -220,7 +226,9 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
   <table class="summary">
     <tr><th>Active Students</th><td>${globalStats.totalActiveStudents}</td></tr>
     <tr><th>Graduates</th><td>${globalStats.totalGraduates}</td></tr>
-    <tr><th>Total Revenue</th><td>${escapeHtml(currency(globalStats.totalRevenue))}</td></tr>
+    <tr><th>Total Revenue</th><td>${escapeHtml(currency(monthRevenueTotal))}</td></tr>
+    <tr><th>Total Expenses</th><td>${escapeHtml(currency(monthExpenseTotal))}</td></tr>
+    <tr><th>Net Revenue</th><td>${escapeHtml(currency(monthNet))}</td></tr>
     <tr><th>Outstanding Balances</th><td>${escapeHtml(currency(globalStats.totalOutstanding))}</td></tr>
     <tr><th>New Enrollments (This Month)</th><td>${globalStats.newEnrollmentsThisMonth}</td></tr>
   </table>
@@ -334,9 +342,10 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
     try {
       setProgramReportLoading(true);
       setProgramReportError(null);
-      const [transactions, students] = await Promise.all([
+      const [transactions, students, misc] = await Promise.all([
         dataService.getRecentTransactions(5000),
-        dataService.getStudents(user)
+        dataService.getStudents(user),
+        dataService.getMiscExpenditures(5000)
       ]);
 
       const { start, end } = getPeriodRange(reportDate, reportPeriod);
@@ -367,6 +376,12 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
       });
 
       const totalRevenue = filteredTransactions.reduce((sum: number, tx: any) => sum + (+tx.amount || 0), 0);
+      const totalExpenses = reportProgramId === 'ALL'
+        ? misc.filter((row: any) => {
+            const date = String(row.date || '');
+            return date && date >= start && date < end;
+          }).reduce((sum: number, row: any) => sum + (+row.amount || 0), 0)
+        : 0;
       const totalOutstanding = filteredEnrollments.reduce((sum: number, e: any) => sum + (+e.feeBalance || 0), 0);
       const uniqueStudents = new Set(filteredEnrollments.map((e: any) => String(e.studentId || ''))).size;
 
@@ -381,6 +396,8 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
         enrollments: filteredEnrollments,
         totals: {
           revenue: totalRevenue,
+          expenses: totalExpenses,
+          netRevenue: totalRevenue - totalExpenses,
           outstanding: totalOutstanding,
           transactions: filteredTransactions.length,
           enrollments: filteredEnrollments.length,
@@ -443,6 +460,8 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
 
   <table class="summary">
     <tr><th>Total Revenue</th><td>${escapeHtml(currency(programReport.totals.revenue))}</td></tr>
+    <tr><th>Total Expenses</th><td>${escapeHtml(currency(programReport.totals.expenses || 0))}</td></tr>
+    <tr><th>Net Revenue</th><td>${escapeHtml(currency(programReport.totals.netRevenue || 0))}</td></tr>
     <tr><th>Outstanding Balances</th><td>${escapeHtml(currency(programReport.totals.outstanding))}</td></tr>
     <tr><th>Transactions</th><td>${programReport.totals.transactions}</td></tr>
     <tr><th>Enrollments</th><td>${programReport.totals.enrollments}</td></tr>
@@ -899,10 +918,18 @@ function ProgramReportModal({
 
         {report ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
               <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">Revenue</p>
                 <p className="text-xl font-serif text-charcoal">{currency(report.totals.revenue)}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">Expenses</p>
+                <p className="text-xl font-serif text-charcoal">{currency(report.totals.expenses || 0)}</p>
+              </div>
+              <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">Net</p>
+                <p className="text-xl font-serif text-charcoal">{currency(report.totals.netRevenue || 0)}</p>
               </div>
               <div className="p-4 rounded-xl bg-charcoal/[0.02] border border-charcoal/5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">Outstanding</p>

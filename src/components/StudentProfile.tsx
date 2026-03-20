@@ -43,6 +43,11 @@ export default function StudentProfile({ user }: StudentProfileProps) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showChargeModal, setShowChargeModal] = useState(false);
   const [showReallocateModal, setShowReallocateModal] = useState(false);
+  const [showRegModal, setShowRegModal] = useState(false);
+  const [editingEnrollment, setEditingEnrollment] = useState<any>(null);
+  const [regValue, setRegValue] = useState('');
+  const [regSaving, setRegSaving] = useState(false);
+  const [regError, setRegError] = useState<string | null>(null);
   const [selectedEnrollmentId, setSelectedEnrollmentId] = useState<string>('');
   const [selectedPaymentTx, setSelectedPaymentTx] = useState<any>(null);
   const [student, setStudent] = useState<any>(null);
@@ -82,6 +87,18 @@ export default function StudentProfile({ user }: StudentProfileProps) {
   const openReallocateModal = (tx: any) => {
     setSelectedPaymentTx(tx);
     setShowReallocateModal(true);
+  };
+  const openRegModal = (enrollment: any) => {
+    setEditingEnrollment(enrollment);
+    setRegValue(String(enrollment?.registrationNumber || ''));
+    setRegError(null);
+    setShowRegModal(true);
+  };
+  const closeRegModal = () => {
+    setShowRegModal(false);
+    setEditingEnrollment(null);
+    setRegValue('');
+    setRegError(null);
   };
 
   if (loading) {
@@ -155,6 +172,9 @@ export default function StudentProfile({ user }: StudentProfileProps) {
     };
   });
   const hasOutstandingBalances = enrollmentPaymentSummaries.some((enrollment: any) => enrollment.balanceForEnrollment > 0);
+  const primaryRegistrationNumber = [...student.enrollments]
+    .sort((a, b) => new Date(b.enrollmentDate || 0).getTime() - new Date(a.enrollmentDate || 0).getTime())
+    .find((enrollment: any) => String(enrollment.registrationNumber || '').trim())?.registrationNumber || '';
 
   const downloadTransactionReceipt = (tx: any) => {
     const enrollment = student.enrollments.find((item: any) => item.id === tx.enrollmentId);
@@ -166,10 +186,12 @@ export default function StudentProfile({ user }: StudentProfileProps) {
       receiptNumber: buildReceiptNumber(tx.date, tx.id),
       studentName: String(student.name || 'Unknown Student'),
       studentEmail: String(student.email || ''),
+      studentPhone: String(student.phone || ''),
       programName: String(tx.programType || ''),
       courseName: String(tx.courseName || ''),
       level: String(tx.level || ''),
       enrollmentId: String(tx.enrollmentId || enrollment?.id || ''),
+      registrationNumber: String(enrollment?.registrationNumber || ''),
       transactionId: String(tx.id || ''),
       transactionDate: String(tx.date || ''),
       paymentMethod: String(tx.method || ''),
@@ -180,6 +202,21 @@ export default function StudentProfile({ user }: StudentProfileProps) {
       outstandingBalance: enrollmentBalance,
       paymentStatus: String(enrollmentPaymentStatus || 'PENDING')
     });
+  };
+
+  const saveRegistrationNumber = async () => {
+    if (!editingEnrollment) return;
+    try {
+      setRegSaving(true);
+      setRegError(null);
+      await dataService.updateEnrollmentRegistrationNumber(editingEnrollment.id, regValue);
+      await fetchStudent();
+      closeRegModal();
+    } catch (error: any) {
+      setRegError(error?.message || 'Failed to update registration number.');
+    } finally {
+      setRegSaving(false);
+    }
   };
 
   return (
@@ -284,6 +321,10 @@ export default function StudentProfile({ user }: StudentProfileProps) {
                         <p className="font-medium">{student.phone}</p>
                       </div>
                       <div>
+                        <p className="text-xs text-charcoal/40 mb-1">Registration Number</p>
+                        <p className="font-medium">{primaryRegistrationNumber || '—'}</p>
+                      </div>
+                      <div>
                         <p className="text-xs text-charcoal/40 mb-1">Next of Kin</p>
                         <p className="font-medium">{student.nextOfKin.name}</p>
                         <p className="text-sm text-charcoal/60">{student.nextOfKin.phone}</p>
@@ -296,6 +337,21 @@ export default function StudentProfile({ user }: StudentProfileProps) {
                       <div>
                         <p className="text-xs text-charcoal/40 mb-1">{student.identification.type}</p>
                         <p className="font-medium">{student.identification.number}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-charcoal/40 mb-1">Gender</p>
+                        <p className="font-medium">{student.gender === 'M' ? 'Male' : student.gender === 'F' ? 'Female' : '—'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-charcoal/40 mb-1">Health Conditions</p>
+                        <p className="font-medium">
+                          {student.healthConditions?.conditions?.length
+                            ? student.healthConditions.conditions.join(', ')
+                            : 'None reported'}
+                        </p>
+                        {student.healthConditions?.other && (
+                          <p className="text-sm text-charcoal/60">Other: {student.healthConditions.other}</p>
+                        )}
                       </div>
                     </div>
                   </section>
@@ -327,6 +383,17 @@ export default function StudentProfile({ user }: StudentProfileProps) {
                         <div>
                           <h5 className="font-bold text-lg">{enrollment.courseName} - {enrollment.level}</h5>
                           <p className="text-sm text-charcoal/50">Instructor: {enrollment.teacherName} • {enrollment.programType}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-charcoal/40">Reg No: {enrollment.registrationNumber || '—'}</p>
+                            {user.role === 'ADMIN' && (
+                              <button
+                                onClick={() => openRegModal(enrollment)}
+                                className="text-[10px] font-bold text-navy hover:underline"
+                              >
+                                Edit
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${
@@ -676,6 +743,17 @@ export default function StudentProfile({ user }: StudentProfileProps) {
             onRefresh={fetchStudent}
           />
         )}
+        {showRegModal && editingEnrollment && (
+          <RegistrationNumberModal
+            enrollment={editingEnrollment}
+            value={regValue}
+            error={regError}
+            saving={regSaving}
+            onChange={setRegValue}
+            onSave={saveRegistrationNumber}
+            onClose={closeRegModal}
+          />
+        )}
       </AnimatePresence>
     </div>
   );
@@ -703,6 +781,22 @@ function EnrollmentModal({
     method: 'MPESA' as 'MPESA' | 'BANK' | 'CASH'
   });
 
+  const normalizeText = (value: string) => String(value || '').trim().toLowerCase();
+  const filterTeachersForCourse = (list: Teacher[], courseName: string, level: string) => {
+    if (!courseName) return list;
+    const normalizedCourse = normalizeText(courseName);
+    const normalizedLevel = normalizeText(level);
+    return list.filter((teacher) => {
+      const assignments = (teacher.courses || []).map((course) => normalizeText(course));
+      if (!assignments.length) return false;
+      if (normalizedLevel) {
+        const fullKey = `${normalizedCourse} ${normalizedLevel}`.trim();
+        if (assignments.some((entry) => entry === fullKey)) return true;
+      }
+      return assignments.some((entry) => entry.startsWith(normalizedCourse));
+    });
+  };
+
   const getProgramLevels = (programId: string) => {
     const program = programs.find(item => item.id === programId);
     return program?.defaultLevels || [];
@@ -724,19 +818,24 @@ function EnrollmentModal({
           dataService.getCourses(),
           dataService.getTeachers()
         ]);
+        const activeTeachers = t.filter(teacher => teacher.active);
         setPrograms(p);
-        setTeachers(t.filter(teacher => teacher.active));
+        setTeachers(activeTeachers);
 
         if (p.length > 0) {
-          setFormData(prev => ({ ...prev, programId: p[0].id }));
+          const programId = p[0].id;
           const filtered = c.filter(course => course.programType === p[0].id);
           setCourses(filtered);
           const levels = getCourseLevels(filtered[0], p[0].id);
+          const defaultCourse = filtered[0];
+          const defaultLevel = levels[0] || '';
+          const matchingTeachers = filterTeachersForCourse(activeTeachers, defaultCourse?.name || '', defaultLevel);
           setFormData(prev => ({
             ...prev,
-            courseId: filtered[0]?.id || '',
-            level: levels[0] || '',
-            teacherId: t.find(teacher => teacher.active)?.id || ''
+            programId,
+            courseId: defaultCourse?.id || '',
+            level: defaultLevel,
+            teacherId: matchingTeachers[0]?.id || ''
           }));
         }
       } catch (error) {
@@ -746,22 +845,20 @@ function EnrollmentModal({
     fetchData();
   }, []);
 
-  useEffect(() => {
-    if (formData.teacherId && !teachers.some(teacher => teacher.id === formData.teacherId)) {
-      setFormData(prev => ({ ...prev, teacherId: '' }));
-    }
-  }, [formData.teacherId, teachers]);
-
   const handleProgramChange = async (id: string) => {
     const allCourses = await dataService.getCourses();
     const filtered = allCourses.filter(c => c.programType === id);
     setCourses(filtered);
     const levels = getCourseLevels(filtered[0], id);
+    const nextCourse = filtered[0];
+    const nextLevel = levels[0] || '';
+    const matchingTeachers = filterTeachersForCourse(teachers, nextCourse?.name || '', nextLevel);
     setFormData({
       ...formData,
       programId: id,
-      courseId: filtered[0]?.id || '',
-      level: levels[0] || ''
+      courseId: nextCourse?.id || '',
+      level: nextLevel,
+      teacherId: matchingTeachers[0]?.id || ''
     });
   };
 
@@ -827,10 +924,24 @@ function EnrollmentModal({
 
   const selectedCourse = courses.find(course => course.id === formData.courseId);
   const availableLevels = getCourseLevels(selectedCourse, formData.programId);
+  const filteredTeachers = filterTeachersForCourse(teachers, selectedCourse?.name || '', formData.level);
   const hasSelectedLevelFee = selectedCourse
     ? hasLevelFeeConfig(selectedCourse.levelFees, formData.level)
     : false;
   const selectedLevelFeeAmount = hasSelectedLevelFee ? getLevelFeeTotal(selectedCourse?.levelFees?.[formData.level]) : 0;
+
+  useEffect(() => {
+    if (!selectedCourse) return;
+    if (filteredTeachers.length === 0) {
+      if (formData.teacherId) {
+        setFormData((prev) => ({ ...prev, teacherId: '' }));
+      }
+      return;
+    }
+    if (!filteredTeachers.some((teacher) => teacher.id === formData.teacherId)) {
+      setFormData((prev) => ({ ...prev, teacherId: filteredTeachers[0].id }));
+    }
+  }, [filteredTeachers, selectedCourse?.name, formData.level, formData.teacherId]);
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center p-6">
@@ -856,7 +967,9 @@ function EnrollmentModal({
                 const courseId = e.target.value;
                 const course = courses.find(item => item.id === courseId);
                 const levels = getCourseLevels(course, formData.programId);
-                setFormData({ ...formData, courseId, level: levels[0] || '' });
+                const nextLevel = levels[0] || '';
+                const matchingTeachers = filterTeachersForCourse(teachers, course?.name || '', nextLevel);
+                setFormData({ ...formData, courseId, level: nextLevel, teacherId: matchingTeachers[0]?.id || '' });
               }}
             >
               {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -877,7 +990,10 @@ function EnrollmentModal({
             <label className="text-[10px] font-bold text-charcoal/40 uppercase tracking-widest">Teacher</label>
             <select className="input-field" value={formData.teacherId} onChange={e => setFormData({...formData, teacherId: e.target.value})}>
               <option value="">Select Teacher</option>
-              {teachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+              {filteredTeachers.length === 0 && (
+                <option value="" disabled>No teachers assigned to this course</option>
+              )}
+              {filteredTeachers.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -1103,6 +1219,63 @@ function ChargeModal({
             className="btn-primary w-full mt-4 disabled:opacity-50"
           >
             {submitting ? 'Saving...' : 'Add Charge Item'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function RegistrationNumberModal({
+  enrollment,
+  value,
+  error,
+  saving,
+  onChange,
+  onSave,
+  onClose
+}: {
+  enrollment: Enrollment;
+  value: string;
+  error: string | null;
+  saving: boolean;
+  onChange: (value: string) => void;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-charcoal/40 backdrop-blur-sm" />
+      <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="relative w-full max-w-lg modal-surface rounded-2xl shadow-2xl p-8">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            <h3 className="text-2xl font-serif text-charcoal">Edit Registration Number</h3>
+            <p className="text-sm text-charcoal/50">{enrollment.courseName} - {enrollment.level}</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-charcoal/5 rounded-full"><X size={20} /></button>
+        </div>
+
+        {error && (
+          <div className="p-3 rounded-xl bg-danger-muted/10 text-danger-muted text-sm mb-4">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-charcoal/40 uppercase tracking-widest">Registration Number</label>
+          <input
+            type="text"
+            className="input-field"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="LC A1 01/26"
+          />
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button onClick={onClose} className="btn-secondary">Cancel</button>
+          <button onClick={onSave} disabled={saving || !value.trim()} className="btn-primary disabled:opacity-50">
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </motion.div>

@@ -4,6 +4,40 @@ const M=6;
 const months=(n:number)=>Array.from({length:n},(_,i)=>{const d=new Date(new Date().getFullYear(),new Date().getMonth()-(n-1-i),1);return{key:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,label:d.toLocaleString('en-US',{month:'short'})}});
 const overall=(g:any[])=>{const r=g.reduce((a,b)=>{const m=+b.maxScore||0,w=+b.weight||0,s=+b.score||0;if(m<=0||w<=0)return a;return{ws:a.ws+(s/m)*w,tw:a.tw+w}},{ws:0,tw:0});return r.tw?Math.round((r.ws/r.tw)*100):0};
 class DataService{
+  private registrationPrefix(courseName:string, level:string, programType?:string){
+    const name=String(courseName||'').toLowerCase();
+    const levelCode=String(level||'').trim().toUpperCase();
+    const program=String(programType||'').toUpperCase();
+    if(name.includes('german'))return `LC ${levelCode||'A1'}`;
+    if(name.includes('italian'))return 'LC ITA';
+    if(name.includes('french'))return 'LC FR';
+    if(name.includes('driving')||program==='DRIVING')return 'LC D';
+    if(name.includes('account')||program==='ACCOUNTING')return 'LC AC';
+    if(name.includes('computer')||name.includes('it')||program==='COMPUTER')return 'LC CIT';
+    return `LC ${levelCode||'GEN'}`;
+  }
+  private async generateRegistrationNumber(input:{courseName:string; level:string; programType?:string; enrollmentDate?:string}){
+    const prefix=this.registrationPrefix(input.courseName,input.level,input.programType);
+    const dateStr=input.enrollmentDate||new Date().toISOString().split('T')[0];
+    const year=String(new Date(dateStr).getFullYear()).slice(-2);
+    const pattern=`${prefix} %/${year}`;
+    const {data,error}=await supabase
+      .from('enrollments')
+      .select('registration_number')
+      .ilike('registration_number',pattern);
+    if(error)throw error;
+    const existing=(data||[]).map((r:any)=>String(r.registration_number||''));
+    let maxSerial=0;
+    existing.forEach((value)=>{
+      const match=value.match(/(\d{2})\/\d{2}$/);
+      if(match){
+        const num=parseInt(match[1],10);
+        if(!Number.isNaN(num))maxSerial=Math.max(maxSerial,num);
+      }
+    });
+    const next=String(maxSerial+1).padStart(2,'0');
+    return `${prefix} ${next}/${year}`;
+  }
   private async invokeEdgeFunction(functionName:string, body:any, fallbackMessage:string){
     const userCheck=await supabase.auth.getUser();
     if(userCheck.error||!userCheck.data.user){
@@ -177,6 +211,7 @@ class DataService{
         totalFee:+r.total_fee||0,
         enrollmentDate:r.enrollment_date,
         paymentStatus:r.payment_status,
+        registrationNumber:r.registration_number||'',
         payments:[],
         feeItems:[],
         attendance:[]
@@ -185,7 +220,17 @@ class DataService{
         const tid=user.teacherId||'';
         e=tid?e.filter((y:any)=>y.teacherId===tid):[];
       }
-      return{id:x.id,name:x.name,email:x.email,phone:x.phone,identification:x.identification,nextOfKin:x.next_of_kin,enrollments:e} as Student;
+      return{
+        id:x.id,
+        name:x.name,
+        email:x.email,
+        phone:x.phone,
+        identification:x.identification,
+        nextOfKin:x.next_of_kin,
+        gender:x.gender||'',
+        healthConditions:x.health_conditions||{conditions:[]},
+        enrollments:e
+      } as Student;
     });
     return s.filter((x:any)=>x.enrollments.length>0||!user||user.role==='ADMIN');
   }
@@ -249,6 +294,7 @@ class DataService{
       totalFee:+r.total_fee||0,
       enrollmentDate:r.enrollment_date,
       paymentStatus:r.payment_status,
+      registrationNumber:r.registration_number||'',
       payments:(r.payments||[]).map((p:any)=>({
         id:p.id,
         enrollmentId:p.enrollment_id,
@@ -291,18 +337,49 @@ class DataService{
       e=tid?e.filter((y:any)=>y.teacherId===tid):[];
       if(!e.length)return undefined;
     }
-    return{id:x.id,name:x.name,email:x.email,phone:x.phone,identification:x.identification,nextOfKin:x.next_of_kin,enrollments:e} as Student;
+    return{
+      id:x.id,
+      name:x.name,
+      email:x.email,
+      phone:x.phone,
+      identification:x.identification,
+      nextOfKin:x.next_of_kin,
+      gender:x.gender||'',
+      healthConditions:x.health_conditions||{conditions:[]},
+      enrollments:e
+    } as Student;
   }
-  async addStudent(s:any){const {data,error}=await supabase.from('students').insert([{name:s.name,email:s.email,phone:s.phone,identification:s.identification,next_of_kin:s.nextOfKin}]).select().single();if(error)throw error;return{...data,nextOfKin:data.next_of_kin,enrollments:[]} as Student;}
+  async addStudent(s:any){
+    const {data,error}=await supabase.from('students').insert([{
+      name:s.name,
+      email:s.email,
+      phone:s.phone,
+      identification:s.identification,
+      next_of_kin:s.nextOfKin,
+      gender:s.gender||null,
+      health_conditions:s.healthConditions||null
+    }]).select().single();
+    if(error)throw error;
+    return{...data,nextOfKin:data.next_of_kin,enrollments:[]} as Student;
+  }
   async deleteStudent(id:string){const {error}=await supabase.from('students').delete().eq('id',id);if(error)throw error;}
-  async updateStudent(id:string,d:any){const a:any={...d};if(d.nextOfKin){a.next_of_kin=d.nextOfKin;delete a.nextOfKin;}const {data,error}=await supabase.from('students').update(a).eq('id',id).select().single();if(error)throw error;return{...data,nextOfKin:data.next_of_kin} as Student;}
+  async updateStudent(id:string,d:any){
+    const a:any={...d};
+    if(d.nextOfKin){a.next_of_kin=d.nextOfKin;delete a.nextOfKin;}
+    if(d.healthConditions!==undefined){a.health_conditions=d.healthConditions;delete a.healthConditions;}
+    const {data,error}=await supabase.from('students').update(a).eq('id',id).select().single();
+    if(error)throw error;
+    return{...data,nextOfKin:data.next_of_kin} as Student;
+  }
   async getGlobalStats(){
-    const [eRes,pRes]=await Promise.all([
+    const [eRes,pRes,xRes]=await Promise.all([
       supabase.from('enrollments').select('student_id,status,enrollment_date,fee_balance'),
-      supabase.from('payments').select('amount')
+      supabase.from('payments').select('amount'),
+      supabase.from('misc_expenditures').select('amount')
     ]);
     if(eRes.error)throw eRes.error;
     if(pRes.error)throw pRes.error;
+    if(xRes.error)throw xRes.error;
 
     const monthStart=new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().split('T')[0];
     const enrollments=(eRes.data||[]).map((e:any)=>({
@@ -313,6 +390,7 @@ class DataService{
     })).filter((e:any)=>e.studentId);
 
     const totalRevenue=(pRes.data||[]).reduce((a:any,x:any)=>a+(+x.amount||0),0);
+    const totalExpenses=(xRes.data||[]).reduce((a:any,x:any)=>a+(+x.amount||0),0);
     const totalOutstanding=enrollments.reduce((a:any,x:any)=>a+x.outstanding,0);
 
     const statusByStudent=new Map<string,Set<string>>();
@@ -358,6 +436,8 @@ class DataService{
       totalGraduates,
       totalDropouts,
       totalRevenue,
+      totalExpenses,
+      netRevenue: totalRevenue - totalExpenses,
       totalOutstanding,
       newEnrollmentsThisMonth
     };
@@ -381,9 +461,109 @@ class DataService{
     });
     return w.map(x=>({name:x.label,students:m.get(x.key)||0}));
   }
-  async getRecentTransactions(limit=50){const {data,error}=await supabase.from('payments').select('id,enrollment_id,amount,date,method,reference,enrollments (id,course_name,program_type,level,total_fee,fee_balance,payment_status,students (name,email))').order('date',{ascending:false}).limit(limit);if(error)throw error;const tx=data||[];return tx.map((p:any)=>{const e=Array.isArray(p.enrollments)?p.enrollments[0]:p.enrollments,s=Array.isArray(e?.students)?e.students[0]:e?.students,st=(e?.payment_status||'PENDING') as 'PAID'|'PARTIAL'|'PENDING';return{id:p.id,enrollmentId:p.enrollment_id,student:s?.name||'Unknown Student',studentEmail:s?.email||'',courseName:e?.course_name||'Unknown Course',programName:e?.program_type||'',level:e?.level||'',amount:+p.amount||0,date:p.date,method:p.method,reference:p.reference||'',status:st,totalFee:+e?.total_fee||0,feeBalance:+e?.fee_balance||0};});}
+  async getRecentTransactions(limit=50){const {data,error}=await supabase.from('payments').select('id,enrollment_id,amount,date,method,reference,enrollments (id,course_name,program_type,level,registration_number,total_fee,fee_balance,payment_status,students (name,email,phone))').order('date',{ascending:false}).limit(limit);if(error)throw error;const tx=data||[];return tx.map((p:any)=>{const e=Array.isArray(p.enrollments)?p.enrollments[0]:p.enrollments,s=Array.isArray(e?.students)?e.students[0]:e?.students,st=(e?.payment_status||'PENDING') as 'PAID'|'PARTIAL'|'PENDING';return{id:p.id,enrollmentId:p.enrollment_id,student:s?.name||'Unknown Student',studentEmail:s?.email||'',studentPhone:s?.phone||'',courseName:e?.course_name||'Unknown Course',programName:e?.program_type||'',level:e?.level||'',registrationNumber:e?.registration_number||'',amount:+p.amount||0,date:p.date,method:p.method,reference:p.reference||'',status:st,totalFee:+e?.total_fee||0,feeBalance:+e?.fee_balance||0};});}
+  async getMiscExpenditures(limit=100){
+    const {data,error}=await supabase
+      .from('misc_expenditures')
+      .select('id,description,category,amount,date,method,reference,created_at')
+      .order('date',{ascending:false})
+      .limit(limit);
+    if(error)throw error;
+    return (data||[]).map((row:any)=>({
+      id:row.id,
+      description:row.description||'',
+      category:row.category||'',
+      amount:+row.amount||0,
+      date:row.date,
+      method:row.method||'',
+      reference:row.reference||'',
+      createdAt:row.created_at
+    }));
+  }
+  async addMiscExpenditure(item:any){
+    const payload={
+      description:String(item.description||'').trim(),
+      category:String(item.category||'').trim()||null,
+      amount:Number(item.amount||0),
+      date:String(item.date||new Date().toISOString().split('T')[0]),
+      method:String(item.method||'').trim()||null,
+      reference:String(item.reference||'').trim()||null
+    };
+    if(!payload.description)throw new Error('Description is required.');
+    if(!Number.isFinite(payload.amount)||payload.amount<=0)throw new Error('Amount must be greater than zero.');
+    const {data,error}=await supabase.from('misc_expenditures').insert([payload]).select().single();
+    if(error)throw error;
+    return{
+      id:data.id,
+      description:data.description,
+      category:data.category||'',
+      amount:+data.amount||0,
+      date:data.date,
+      method:data.method||'',
+      reference:data.reference||'',
+      createdAt:data.created_at
+    };
+  }
+  async updateMiscExpenditure(id:string,item:any){
+    const cleanId=String(id||'').trim();
+    if(!cleanId)throw new Error('Expenditure ID is required.');
+    const payload={
+      description:String(item.description||'').trim(),
+      category:String(item.category||'').trim()||null,
+      amount:Number(item.amount||0),
+      date:String(item.date||new Date().toISOString().split('T')[0]),
+      method:String(item.method||'').trim()||null,
+      reference:String(item.reference||'').trim()||null
+    };
+    if(!payload.description)throw new Error('Description is required.');
+    if(!Number.isFinite(payload.amount)||payload.amount<=0)throw new Error('Amount must be greater than zero.');
+    const {data,error}=await supabase
+      .from('misc_expenditures')
+      .update(payload)
+      .eq('id',cleanId)
+      .select()
+      .single();
+    if(error)throw error;
+    return{
+      id:data.id,
+      description:data.description,
+      category:data.category||'',
+      amount:+data.amount||0,
+      date:data.date,
+      method:data.method||'',
+      reference:data.reference||'',
+      createdAt:data.created_at
+    };
+  }
+  async deleteMiscExpenditure(id:string){
+    const cleanId=String(id||'').trim();
+    if(!cleanId)throw new Error('Expenditure ID is required.');
+    const {error}=await supabase.from('misc_expenditures').delete().eq('id',cleanId);
+    if(error)throw error;
+    return true;
+  }
   async addEnrollmentToStudent(studentId:string,e:any){
-    const {data,error}=await supabase.from('enrollments').insert([{student_id:studentId,program_type:e.programType,course_id:e.courseId,course_name:e.courseName,level:e.level,teacher_id:e.teacherId,teacher_name:e.teacherName,status:e.status,fee_balance:e.feeBalance,total_fee:e.totalFee,enrollment_date:e.enrollmentDate,payment_status:e.paymentStatus}]).select().single();
+    const registrationNumber=await this.generateRegistrationNumber({
+      courseName:e.courseName,
+      level:e.level,
+      programType:e.programType,
+      enrollmentDate:e.enrollmentDate
+    });
+    const {data,error}=await supabase.from('enrollments').insert([{
+      student_id:studentId,
+      program_type:e.programType,
+      course_id:e.courseId,
+      course_name:e.courseName,
+      level:e.level,
+      teacher_id:e.teacherId,
+      teacher_name:e.teacherName,
+      status:e.status,
+      fee_balance:e.feeBalance,
+      total_fee:e.totalFee,
+      enrollment_date:e.enrollmentDate,
+      payment_status:e.paymentStatus,
+      registration_number:registrationNumber
+    }]).select().single();
     if(error)throw error;
     return{
       ...e,
@@ -391,10 +571,25 @@ class DataService{
       totalFee:+data.total_fee||+e.totalFee||0,
       feeBalance:+data.fee_balance||+e.feeBalance||0,
       paymentStatus:data.payment_status||e.paymentStatus||'PENDING',
+      registrationNumber:data.registration_number||registrationNumber,
       payments:[],
       feeItems:[],
       attendance:[]
     } as Enrollment;
+  }
+  async updateEnrollmentRegistrationNumber(enrollmentId:string, registrationNumber:string){
+    const cleanId=String(enrollmentId||'').trim();
+    const cleanReg=String(registrationNumber||'').trim();
+    if(!cleanId)throw new Error('Enrollment ID is required.');
+    if(!cleanReg)throw new Error('Registration number is required.');
+    const {data,error}=await supabase
+      .from('enrollments')
+      .update({registration_number:cleanReg})
+      .eq('id',cleanId)
+      .select()
+      .single();
+    if(error)throw error;
+    return data;
   }
   async recordPayment(enrollmentId:string,p:any){
     const amount=Number(p?.amount||0);

@@ -70,7 +70,7 @@ export default function StudentManagement({ user }: StudentManagementProps) {
   const handleMarkGraduate = async (enrollmentId: string) => {
     if (user.role !== 'ADMIN') return;
     const confirmed = window.confirm(
-      'Mark this enrollment as graduated?\n\nThe system will only allow this if fees are fully paid and both assessments and exams are recorded.'
+      'Mark this enrollment as graduated?\n\nThe system will only allow this if the fee balance is fully paid.'
     );
     if (!confirmed) return;
 
@@ -94,7 +94,8 @@ export default function StudentManagement({ user }: StudentManagementProps) {
 
   const filteredEnrollments = allEnrollments.filter(enrollment =>
     enrollment.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    enrollment.courseName.toLowerCase().includes(searchTerm.toLowerCase())
+    enrollment.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(enrollment.registrationNumber || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (status: string) => {
@@ -169,6 +170,7 @@ export default function StudentManagement({ user }: StudentManagementProps) {
               <tr className="bg-charcoal/[0.02]">
                 <th className="table-header">Student</th>
                 <th className="table-header">Program & Course</th>
+                <th className="table-header">Reg No</th>
                 <th className="table-header">Teacher</th>
                 <th className="table-header">Status</th>
                 <th className="table-header">Fee Balance</th>
@@ -194,6 +196,9 @@ export default function StudentManagement({ user }: StudentManagementProps) {
                         {enrollment.programType} - {enrollment.level}
                       </span>
                     </div>
+                  </td>
+                  <td className="table-cell text-xs font-mono text-charcoal/50">
+                    {enrollment.registrationNumber || '—'}
                   </td>
                   <td className="table-cell text-charcoal/70">{enrollment.teacherName}</td>
                   <td className="table-cell">
