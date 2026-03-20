@@ -140,9 +140,9 @@ html.theme-dark header {
 }
 
 .table-header {
-  @apply text-xs uppercase tracking-wider text-charcoal/50 font-semibold py-4 px-6 text-left border-b border-charcoal/5;
+  @apply text-[11px] uppercase tracking-wider text-charcoal/50 font-semibold py-3 px-4 text-left border-b border-charcoal/5;
 }
 
 .table-cell {
-  @apply py-4 px-6 text-sm border-b border-charcoal/5;
+  @apply py-3 px-4 text-[13px] border-b border-charcoal/5;
 }

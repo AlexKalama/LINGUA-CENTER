@@ -358,56 +358,56 @@ export default function Financials() {
     <div className="space-y-8">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-4xl font-serif text-charcoal mb-2">Financial Systems</h1>
+          <h1 className="text-3xl font-serif text-charcoal mb-2">Financial Systems</h1>
           <p className="text-charcoal/50">Live revenue and payment records from the database.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <div className="glass-card p-6">
+        <div className="glass-card p-5">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 rounded-xl bg-navy/10 text-navy">
+            <div className="p-2.5 rounded-xl bg-navy/10 text-navy">
               <TrendingUp size={24} />
             </div>
           </div>
           <p className="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">Total Collected</p>
-          <p className="text-2xl font-serif text-charcoal">Ksh {stats.totalRevenue.toLocaleString()}</p>
+          <p className="text-xl font-serif text-charcoal">Ksh {stats.totalRevenue.toLocaleString()}</p>
         </div>
-        <div className="glass-card p-6">
+        <div className="glass-card p-5">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 rounded-xl bg-sage/10 text-sage">
+            <div className="p-2.5 rounded-xl bg-sage/10 text-sage">
               <Wallet size={24} />
             </div>
           </div>
           <p className="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">Current Month Revenue</p>
-          <p className="text-2xl font-serif text-charcoal">Ksh {currentMonthRevenue.toLocaleString()}</p>
+          <p className="text-xl font-serif text-charcoal">Ksh {currentMonthRevenue.toLocaleString()}</p>
         </div>
-        <div className="glass-card p-6">
+        <div className="glass-card p-5">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 rounded-xl bg-danger-muted/10 text-danger-muted">
+            <div className="p-2.5 rounded-xl bg-danger-muted/10 text-danger-muted">
               <AlertCircle size={24} />
             </div>
           </div>
           <p className="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">Outstanding Balances</p>
-          <p className="text-2xl font-serif text-charcoal">Ksh {stats.totalOutstanding.toLocaleString()}</p>
+          <p className="text-xl font-serif text-charcoal">Ksh {stats.totalOutstanding.toLocaleString()}</p>
         </div>
-        <div className="glass-card p-6">
+        <div className="glass-card p-5">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 rounded-xl bg-warning-muted/10 text-warning-muted">
+            <div className="p-2.5 rounded-xl bg-warning-muted/10 text-warning-muted">
               <AlertCircle size={24} />
             </div>
           </div>
           <p className="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">Total Expenses</p>
-          <p className="text-2xl font-serif text-charcoal">Ksh {Number(totalExpenses).toLocaleString()}</p>
+          <p className="text-xl font-serif text-charcoal">Ksh {Number(totalExpenses).toLocaleString()}</p>
         </div>
-        <div className="glass-card p-6">
+        <div className="glass-card p-5">
           <div className="flex justify-between items-start mb-4">
-            <div className="p-3 rounded-xl bg-navy/10 text-navy">
+            <div className="p-2.5 rounded-xl bg-navy/10 text-navy">
               <TrendingUp size={24} />
             </div>
           </div>
           <p className="text-xs font-bold text-charcoal/40 uppercase tracking-widest mb-1">Net Revenue</p>
-          <p className="text-2xl font-serif text-charcoal">Ksh {Number(netRevenue).toLocaleString()}</p>
+          <p className="text-xl font-serif text-charcoal">Ksh {Number(netRevenue).toLocaleString()}</p>
         </div>
       </div>
 
