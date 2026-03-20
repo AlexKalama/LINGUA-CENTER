@@ -953,57 +953,95 @@ function ProgramReportModal({
               <div className="glass-card p-4">
                 <h4 className="text-sm font-bold uppercase tracking-widest text-charcoal/40 mb-3">Transactions</h4>
                 <div className="max-h-72 overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-charcoal/40 uppercase tracking-widest">
-                        <th className="text-left pb-2">Date</th>
-                        <th className="text-left pb-2">Student</th>
-                        <th className="text-left pb-2">Course</th>
-                        <th className="text-left pb-2">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-charcoal/70">
-                      {report.transactions.map((tx: any) => (
-                        <tr key={tx.id} className="border-t border-charcoal/5">
-                          <td className="py-2">{tx.date}</td>
-                          <td className="py-2">{tx.student}</td>
-                          <td className="py-2">{tx.courseName} {tx.level ? `- ${tx.level}` : ''}</td>
-                          <td className="py-2 font-semibold">{currency(tx.amount)}</td>
+                  <div className="md:hidden divide-y divide-charcoal/5">
+                    {report.transactions.map((tx: any) => (
+                      <div key={tx.id} className="py-3 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs text-charcoal/40">{tx.date}</p>
+                            <p className="text-sm font-semibold text-charcoal">{tx.student}</p>
+                            <p className="text-[11px] text-charcoal/50">{tx.courseName} {tx.level ? `- ${tx.level}` : ''}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-charcoal">{currency(tx.amount)}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {report.transactions.length === 0 && (
+                      <div className="py-3 text-sm text-charcoal/40">No transactions in this period.</div>
+                    )}
+                  </div>
+                  <div className="hidden md:block">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-charcoal/40 uppercase tracking-widest">
+                          <th className="text-left pb-2">Date</th>
+                          <th className="text-left pb-2">Student</th>
+                          <th className="text-left pb-2">Course</th>
+                          <th className="text-left pb-2">Amount</th>
                         </tr>
-                      ))}
-                      {report.transactions.length === 0 && (
-                        <tr><td colSpan={4} className="py-3 text-charcoal/40">No transactions in this period.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="text-charcoal/70">
+                        {report.transactions.map((tx: any) => (
+                          <tr key={tx.id} className="border-t border-charcoal/5">
+                            <td className="py-2">{tx.date}</td>
+                            <td className="py-2">{tx.student}</td>
+                            <td className="py-2">{tx.courseName} {tx.level ? `- ${tx.level}` : ''}</td>
+                            <td className="py-2 font-semibold">{currency(tx.amount)}</td>
+                          </tr>
+                        ))}
+                        {report.transactions.length === 0 && (
+                          <tr><td colSpan={4} className="py-3 text-charcoal/40">No transactions in this period.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
               <div className="glass-card p-4">
                 <h4 className="text-sm font-bold uppercase tracking-widest text-charcoal/40 mb-3">Enrollments</h4>
                 <div className="max-h-72 overflow-y-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-charcoal/40 uppercase tracking-widest">
-                        <th className="text-left pb-2">Student</th>
-                        <th className="text-left pb-2">Course</th>
-                        <th className="text-left pb-2">Status</th>
-                        <th className="text-left pb-2">Balance</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-charcoal/70">
-                      {report.enrollments.map((enrollment: any) => (
-                        <tr key={enrollment.id} className="border-t border-charcoal/5">
-                          <td className="py-2">{enrollment.student}</td>
-                          <td className="py-2">{enrollment.courseName} {enrollment.level ? `- ${enrollment.level}` : ''}</td>
-                          <td className="py-2">{enrollment.status}</td>
-                          <td className="py-2 font-semibold">{currency(enrollment.feeBalance)}</td>
+                  <div className="md:hidden divide-y divide-charcoal/5">
+                    {report.enrollments.map((enrollment: any) => (
+                      <div key={enrollment.id} className="py-3 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-charcoal">{enrollment.student}</p>
+                            <p className="text-[11px] text-charcoal/50">{enrollment.courseName} {enrollment.level ? `- ${enrollment.level}` : ''}</p>
+                            <p className="text-[11px] text-charcoal/40 uppercase tracking-widest">{enrollment.status}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-charcoal">{currency(enrollment.feeBalance)}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {report.enrollments.length === 0 && (
+                      <div className="py-3 text-sm text-charcoal/40">No enrollments in this period.</div>
+                    )}
+                  </div>
+                  <div className="hidden md:block">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-charcoal/40 uppercase tracking-widest">
+                          <th className="text-left pb-2">Student</th>
+                          <th className="text-left pb-2">Course</th>
+                          <th className="text-left pb-2">Status</th>
+                          <th className="text-left pb-2">Balance</th>
                         </tr>
-                      ))}
-                      {report.enrollments.length === 0 && (
-                        <tr><td colSpan={4} className="py-3 text-charcoal/40">No enrollments in this period.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="text-charcoal/70">
+                        {report.enrollments.map((enrollment: any) => (
+                          <tr key={enrollment.id} className="border-t border-charcoal/5">
+                            <td className="py-2">{enrollment.student}</td>
+                            <td className="py-2">{enrollment.courseName} {enrollment.level ? `- ${enrollment.level}` : ''}</td>
+                            <td className="py-2">{enrollment.status}</td>
+                            <td className="py-2 font-semibold">{currency(enrollment.feeBalance)}</td>
+                          </tr>
+                        ))}
+                        {report.enrollments.length === 0 && (
+                          <tr><td colSpan={4} className="py-3 text-charcoal/40">No enrollments in this period.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1055,38 +1093,72 @@ function GraduatedStudentsModal({
         {!loading && !error && (
           <div className="glass-card p-4">
             <div className="max-h-[60vh] overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-charcoal/40 uppercase tracking-widest">
-                    <th className="text-left pb-2">Student</th>
-                    <th className="text-left pb-2">Program</th>
-                    <th className="text-left pb-2">Course</th>
-                    <th className="text-left pb-2">Level</th>
-                    <th className="text-left pb-2">Enrollment Date</th>
-                    <th className="text-left pb-2">Total Fee</th>
-                  </tr>
-                </thead>
-                <tbody className="text-charcoal/70">
-                  {rows.map((row: any) => (
-                    <tr key={row.id} className="border-t border-charcoal/5">
-                      <td className="py-2">
-                        <div className="font-semibold text-charcoal">{row.studentName}</div>
-                        <div className="text-[10px] text-charcoal/40">{row.studentEmail}</div>
-                      </td>
-                      <td className="py-2">{row.programType || '-'}</td>
-                      <td className="py-2">{row.courseName}</td>
-                      <td className="py-2">{row.level}</td>
-                      <td className="py-2">{row.enrollmentDate}</td>
-                      <td className="py-2 font-semibold">{currency(row.totalFee)}</td>
+              <div className="md:hidden divide-y divide-charcoal/5">
+                {rows.map((row: any) => (
+                  <div key={row.id} className="py-3 space-y-2">
+                    <div>
+                      <p className="text-sm font-semibold text-charcoal">{row.studentName}</p>
+                      <p className="text-[11px] text-charcoal/40">{row.studentEmail}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs text-charcoal/60">
+                      <div>
+                        <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Program</p>
+                        <p className="font-medium text-charcoal">{row.programType || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Course</p>
+                        <p className="font-medium text-charcoal">{row.courseName}</p>
+                      </div>
+                      <div>
+                        <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Level</p>
+                        <p className="font-medium text-charcoal">{row.level}</p>
+                      </div>
+                      <div>
+                        <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Enrollment Date</p>
+                        <p className="font-medium text-charcoal">{row.enrollmentDate}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm font-semibold text-charcoal">{currency(row.totalFee)}</p>
+                  </div>
+                ))}
+                {rows.length === 0 && (
+                  <div className="py-3 text-sm text-charcoal/40">No graduated students yet.</div>
+                )}
+              </div>
+              <div className="hidden md:block">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-charcoal/40 uppercase tracking-widest">
+                      <th className="text-left pb-2">Student</th>
+                      <th className="text-left pb-2">Program</th>
+                      <th className="text-left pb-2">Course</th>
+                      <th className="text-left pb-2">Level</th>
+                      <th className="text-left pb-2">Enrollment Date</th>
+                      <th className="text-left pb-2">Total Fee</th>
                     </tr>
-                  ))}
-                  {rows.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-3 text-charcoal/40">No graduated students yet.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="text-charcoal/70">
+                    {rows.map((row: any) => (
+                      <tr key={row.id} className="border-t border-charcoal/5">
+                        <td className="py-2">
+                          <div className="font-semibold text-charcoal">{row.studentName}</div>
+                          <div className="text-[10px] text-charcoal/40">{row.studentEmail}</div>
+                        </td>
+                        <td className="py-2">{row.programType || '-'}</td>
+                        <td className="py-2">{row.courseName}</td>
+                        <td className="py-2">{row.level}</td>
+                        <td className="py-2">{row.enrollmentDate}</td>
+                        <td className="py-2 font-semibold">{currency(row.totalFee)}</td>
+                      </tr>
+                    ))}
+                    {rows.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-3 text-charcoal/40">No graduated students yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

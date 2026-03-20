@@ -296,7 +296,7 @@ export default function ProgramsManagement() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-serif text-charcoal mb-2">Curriculum Management</h1>
           <p className="text-charcoal/50">Configure programs, courses, levels, and fee structures.</p>
@@ -336,7 +336,7 @@ export default function ProgramsManagement() {
                       <p className="text-xs text-charcoal/40">
                         {allCourses.filter(c => c.programType === program.id).length} Courses
                       </p>
-                      <p className="text-[10px] text-charcoal/30 mt-1">
+                      <p className="text-[10px] text-charcoal/30 mt-1 break-words">
                         Levels: {(program.defaultLevels && program.defaultLevels.length > 0 ? program.defaultLevels : ['Basic', 'Advanced']).join(', ')}
                       </p>
                     </div>
@@ -474,7 +474,7 @@ export default function ProgramsManagement() {
 
                         <div className="space-y-2">
                           {getLevelFeeItems(courseFormData.levelFees[level]).map((component, index) => (
-                            <div key={`${level}-component-${index}`} className="grid grid-cols-[1fr_120px_auto] gap-2 items-center">
+                            <div key={`${level}-component-${index}`} className="grid grid-cols-1 sm:grid-cols-[1fr_120px_auto] gap-2 items-center">
                               <input
                                 type="text"
                                 value={component.name}
@@ -501,7 +501,7 @@ export default function ProgramsManagement() {
                           ))}
                         </div>
 
-                        <div className="grid grid-cols-[1fr_120px_auto] gap-2 items-center">
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px_auto] gap-2 items-center">
                           <input
                             type="text"
                             value={componentDrafts[level]?.name || ''}

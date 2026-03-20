@@ -105,7 +105,7 @@ export default function TeacherManagement() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-serif text-charcoal mb-2">Faculty Directory</h1>
           <p className="text-charcoal/50">Manage teacher assignments, performance metrics, and course loads.</p>
@@ -121,7 +121,7 @@ export default function TeacherManagement() {
           <motion.div 
             key={teacher.id}
             whileHover={{ y: -4 }}
-            className="glass-card p-8 flex flex-col md:flex-row gap-8 relative overflow-hidden"
+            className="glass-card p-6 sm:p-8 flex flex-col md:flex-row gap-6 md:gap-8 relative overflow-hidden"
           >
             {!teacher.active && (
               <div className="absolute top-4 right-4 px-3 py-1 bg-charcoal/10 text-charcoal/40 text-[10px] font-bold uppercase tracking-widest rounded-full">
@@ -129,7 +129,7 @@ export default function TeacherManagement() {
               </div>
             )}
             
-            <div className="flex flex-col items-center text-center md:items-start md:text-left min-w-[200px]">
+            <div className="flex flex-col items-center text-center md:items-start md:text-left min-w-0 sm:min-w-[200px]">
               <div className="w-20 h-20 rounded-full bg-sage/20 text-sage flex items-center justify-center text-2xl font-serif font-bold mb-4">
                 {teacher.name.split(' ').map(n => n[0]).join('')}
               </div>
@@ -151,7 +151,7 @@ export default function TeacherManagement() {
               
               <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                 {teacher.courses.map(course => (
-                  <span key={course} className="px-2 py-1 rounded bg-navy/5 text-navy text-[10px] font-bold uppercase tracking-wider">
+                  <span key={course} className="px-2 py-1 rounded bg-navy/5 text-navy text-[10px] font-bold uppercase tracking-wider max-w-full break-words whitespace-normal">
                     {course}
                   </span>
                 ))}
@@ -165,7 +165,7 @@ export default function TeacherManagement() {
               </button>
             </div>
 
-            <div className="absolute bottom-4 right-4 flex gap-2">
+            <div className="flex justify-end w-full md:w-auto mt-4 md:mt-0 md:absolute md:bottom-4 md:right-4 gap-2">
               <button 
                 onClick={() => setAccessTeacher(teacher)}
                 className="p-2 text-charcoal/20 hover:text-sage hover:bg-sage/5 rounded-lg transition-all"

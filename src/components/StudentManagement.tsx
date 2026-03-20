@@ -164,7 +164,107 @@ export default function StudentManagement({ user }: StudentManagementProps) {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="md:hidden divide-y divide-charcoal/5">
+          {filteredEnrollments.map((enrollment) => (
+            <div key={enrollment.id} className="p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-charcoal">{enrollment.studentName}</p>
+                  <p className="text-xs text-charcoal/40">{enrollment.registrationNumber || '—'}</p>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider ${getStatusColor(enrollment.status)}`}>
+                  {enrollment.status}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs text-charcoal/60">
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Course</p>
+                  <p className="font-semibold text-charcoal">{enrollment.courseName}</p>
+                  <p className="text-[10px] text-charcoal/40 uppercase tracking-tight">{enrollment.programType} - {enrollment.level}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Teacher</p>
+                  <p className="font-medium text-charcoal">{enrollment.teacherName}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Fee Balance</p>
+                  <p className="font-semibold text-charcoal">Ksh {enrollment.feeBalance.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Enrollment Date</p>
+                  <p className="font-medium text-charcoal">{enrollment.enrollmentDate}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between relative">
+                <Link
+                  to={`/students/${enrollment.studentId}`}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-navy hover:bg-navy/5 rounded transition-all"
+                >
+                  <Eye size={14} />
+                  View
+                </Link>
+                {user.role === 'TEACHER' ? (
+                  <button
+                    onClick={() => navigate(`/students/${enrollment.studentId}/enrollments/${enrollment.id}/manage`)}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-charcoal hover:bg-charcoal/5 rounded transition-all"
+                  >
+                    <MoreHorizontal size={14} />
+                    Manage
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setOpenActionsFor(openActionsFor === enrollment.id ? null : enrollment.id)}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-charcoal hover:bg-charcoal/5 rounded transition-all"
+                  >
+                    <MoreHorizontal size={14} />
+                    Actions
+                  </button>
+                )}
+
+                {user.role === 'ADMIN' && openActionsFor === enrollment.id && (
+                  <div className="absolute right-0 top-10 z-20 min-w-[220px] rounded-lg popover-surface shadow-xl p-1">
+                    <button
+                      onClick={() => {
+                        setOpenActionsFor(null);
+                        navigate(`/students/${enrollment.studentId}/enrollments/${enrollment.id}/manage`);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-charcoal hover:bg-charcoal/5 rounded-md transition-all"
+                    >
+                      View Academic Records
+                    </button>
+                    <button
+                      onClick={() => handleMarkGraduate(enrollment.id)}
+                      disabled={graduatingEnrollmentId === enrollment.id || enrollment.status === 'GRADUATED'}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-sage hover:bg-sage/10 rounded-md transition-all disabled:opacity-50"
+                    >
+                      <GraduationCap size={14} />
+                      {enrollment.status === 'GRADUATED'
+                        ? 'Already Graduated'
+                        : graduatingEnrollmentId === enrollment.id
+                          ? 'Updating...'
+                          : 'Mark as Graduated'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteStudent(enrollment.studentId, enrollment.studentName)}
+                      disabled={deletingStudentId === enrollment.studentId}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger-muted hover:bg-danger-muted/10 rounded-md transition-all disabled:opacity-50"
+                    >
+                      <Trash2 size={14} />
+                      {deletingStudentId === enrollment.studentId ? 'Deleting...' : 'Delete Student'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {filteredEnrollments.length === 0 && (
+            <div className="p-4 text-center text-sm text-charcoal/40">
+              No enrollments match your search.
+            </div>
+          )}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-charcoal/[0.02]">

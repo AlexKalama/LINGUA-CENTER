@@ -474,7 +474,70 @@ export default function Financials() {
             />
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="md:hidden divide-y divide-charcoal/5">
+          {filteredTransactions.map((tx) => (
+            <div key={tx.id} className="p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-charcoal">{tx.student}</p>
+                  <p className="text-xs text-charcoal/40">{tx.studentEmail || '-'}</p>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
+                  tx.status === 'PAID' ? 'bg-success-muted/10 text-success-muted' :
+                  tx.status === 'PARTIAL' ? 'bg-warning-muted/10 text-warning-muted' :
+                  'bg-danger-muted/10 text-danger-muted'
+                }`}>
+                  {tx.status}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs text-charcoal/60">
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Reg No</p>
+                  <p className="font-semibold text-charcoal">{tx.registrationNumber || '—'}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Course</p>
+                  <p className="font-semibold text-charcoal">{tx.courseName}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Date</p>
+                  <p className="font-medium text-charcoal">{tx.date}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Method</p>
+                  <p className="font-medium text-charcoal">{tx.method}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Reference</p>
+                  <p className="font-medium text-charcoal">{tx.reference || '-'}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Amount</p>
+                  <p className="font-semibold text-charcoal">Ksh {tx.amount.toLocaleString()}</p>
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-[11px] text-charcoal/40">
+                <span className="font-mono">TX: {tx.id}</span>
+                <button
+                  onClick={() => downloadTransactionReceipt(tx)}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-navy hover:bg-navy/5 rounded transition-all"
+                  title="Download receipt"
+                >
+                  <Download size={14} />
+                  Download
+                </button>
+              </div>
+            </div>
+          ))}
+          {filteredTransactions.length === 0 && (
+            <div className="p-4 text-center text-sm text-charcoal/40">
+              {normalizedSearch
+                ? 'No transactions match your search.'
+                : 'No payment transactions found in the database.'}
+            </div>
+          )}
+        </div>
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-charcoal/[0.02]">
@@ -673,7 +736,57 @@ export default function Financials() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="md:hidden divide-y divide-charcoal/5">
+          {filteredExpenses.map((row) => (
+            <div key={row.id} className="p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-charcoal">{row.description}</p>
+                  <p className="text-xs text-charcoal/40">{row.category || '-'}</p>
+                </div>
+                <p className="text-sm font-semibold text-charcoal">Ksh {Number(row.amount || 0).toLocaleString()}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs text-charcoal/60">
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Date</p>
+                  <p className="font-medium text-charcoal">{row.date}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Method</p>
+                  <p className="font-medium text-charcoal">{row.method || '-'}</p>
+                </div>
+                <div>
+                  <p className="uppercase tracking-wider text-[10px] text-charcoal/40">Reference</p>
+                  <p className="font-medium text-charcoal">{row.reference || '-'}</p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => openEditExpense(row)}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-navy hover:bg-navy/5 rounded transition-all"
+                  title="Edit expenditure"
+                >
+                  <Edit2 size={14} />
+                  Edit
+                </button>
+                <button
+                  onClick={() => setDeleteTarget(row)}
+                  className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-danger-muted hover:bg-danger-muted/10 rounded transition-all"
+                  title="Delete expenditure"
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+          {filteredExpenses.length === 0 && (
+            <div className="p-4 text-center text-sm text-charcoal/40">
+              No miscellaneous expenditure recorded for this filter.
+            </div>
+          )}
+        </div>
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="bg-charcoal/[0.02]">
