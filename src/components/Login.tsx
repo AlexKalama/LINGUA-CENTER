@@ -132,24 +132,24 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-ivory p-6">
+    <div className="min-h-screen flex items-center justify-center bg-ivory p-4 sm:p-6 overflow-hidden">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md max-h-[92vh] overflow-y-auto"
       >
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-navy text-white mb-4">
-            <BookOpen size={32} />
+        <div className="text-center mb-8 sm:mb-10">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-navy text-white mb-3 sm:mb-4">
+            <BookOpen size={30} />
           </div>
-          <h1 className="text-4xl font-serif text-charcoal mb-2">Lingua Center</h1>
-          <p className="text-charcoal/60 font-sans">Academic Management System</p>
+          <h1 className="text-3xl sm:text-4xl font-serif text-charcoal mb-2">Lingua Center</h1>
+          <p className="text-charcoal/60 font-sans text-sm sm:text-base">Academic Management System</p>
         </div>
 
-        <div className="glass-card p-8 shadow-xl border-charcoal/10">
-          <h2 className="text-2xl font-serif text-charcoal mb-6 text-center">Internal Access</h2>
+        <div className="glass-card p-6 sm:p-8 shadow-xl border-charcoal/10">
+          <h2 className="text-xl sm:text-2xl font-serif text-charcoal mb-4 sm:mb-6 text-center">Internal Access</h2>
 
-          <div className="grid grid-cols-2 gap-2 mb-6">
+          <div className="grid grid-cols-2 gap-2 mb-5 sm:mb-6">
             <button
               type="button"
               onClick={() => handleSwitchRole('ADMIN')}
@@ -184,7 +184,7 @@ export default function Login() {
           )}
 
           {!showForgot ? (
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-charcoal/50 uppercase tracking-wider mb-2">
                   {role === 'ADMIN' ? 'Admin Email' : 'Teacher Email'}
@@ -213,7 +213,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full btn-primary py-3 text-lg mt-4 shadow-lg shadow-navy/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full btn-primary py-3 text-base sm:text-lg mt-3 sm:mt-4 shadow-lg shadow-navy/20 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="animate-spin" size={20} /> : 'Sign In'}
               </button>
@@ -292,7 +292,7 @@ export default function Login() {
                 type="button"
                 onClick={otpSent ? verifyOtpAndResetPassword : sendForgotOtp}
                 disabled={loading}
-                className="w-full btn-primary py-3 text-lg mt-4 shadow-lg shadow-navy/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full btn-primary py-3 text-base sm:text-lg mt-3 sm:mt-4 shadow-lg shadow-navy/20 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <Loader2 className="animate-spin" size={20} />
