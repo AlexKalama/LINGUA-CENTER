@@ -18,6 +18,8 @@ const ADMIN_EMAIL_ALLOWLIST = [
   'linguavocational@gmail.com',
   'linguacentre2013@gmail.com'
 ];
+const IDLE_TIMEOUT_MS = 15 * 60 * 1000;
+const ACTIVITY_KEY = 'lingua-last-activity';
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const isAdminEmailAllowed = (value: string) => ADMIN_EMAIL_ALLOWLIST.includes(normalizeEmail(value));
 
@@ -53,6 +55,37 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, [isConfigured]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const recordActivity = () => {
+      try {
+        sessionStorage.setItem(ACTIVITY_KEY, String(Date.now()));
+      } catch {
+        // Ignore storage errors (private mode or disabled storage).
+      }
+    };
+
+    recordActivity();
+
+    const events = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart'];
+    events.forEach((event) => window.addEventListener(event, recordActivity, { passive: true }));
+
+    const interval = window.setInterval(async () => {
+      const last = Number(sessionStorage.getItem(ACTIVITY_KEY) || 0);
+      if (!last) return;
+      if (Date.now() - last > IDLE_TIMEOUT_MS) {
+        await supabase.auth.signOut();
+        setUser(null);
+      }
+    }, 60 * 1000);
+
+    return () => {
+      events.forEach((event) => window.removeEventListener(event, recordActivity));
+      window.clearInterval(interval);
+    };
+  }, [user]);
 
   const fetchProfile = async (userId: string, email: string) => {
     try {

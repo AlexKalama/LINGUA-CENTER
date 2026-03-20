@@ -15,7 +15,9 @@ export const supabase = createClient(
   {
     auth: {
       // We use explicit OTP verification in-app and do not trust URL token auto-signin.
-      detectSessionInUrl: false
+      detectSessionInUrl: false,
+      persistSession: true,
+      storage: typeof window === 'undefined' ? undefined : window.sessionStorage
     }
   }
 );

@@ -29,13 +29,13 @@ class DataService{
     const existing=(data||[]).map((r:any)=>String(r.registration_number||''));
     let maxSerial=0;
     existing.forEach((value)=>{
-      const match=value.match(/(\d{2})\/\d{2}$/);
+      const match=value.match(/(\d{3})\/\d{2}$/);
       if(match){
         const num=parseInt(match[1],10);
         if(!Number.isNaN(num))maxSerial=Math.max(maxSerial,num);
       }
     });
-    const next=String(maxSerial+1).padStart(2,'0');
+    const next=String(maxSerial+1).padStart(3,'0');
     return `${prefix} ${next}/${year}`;
   }
   private async invokeEdgeFunction(functionName:string, body:any, fallbackMessage:string){
