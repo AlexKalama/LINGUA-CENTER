@@ -244,9 +244,19 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
                 <p className="text-sm font-semibold text-charcoal">{user.name}</p>
                 <p className="text-xs text-charcoal/50 capitalize">{user.role.toLowerCase()}</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-sage/20 flex items-center justify-center text-sage font-bold">
-                {user.name.charAt(0)}
-              </div>
+              {user.role === 'TEACHER' ? (
+                <Link
+                  to="/profile"
+                  className="w-10 h-10 rounded-full bg-sage/20 flex items-center justify-center text-sage font-bold hover:bg-sage/30 transition-all"
+                  title="View profile"
+                >
+                  {user.name.charAt(0)}
+                </Link>
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-sage/20 flex items-center justify-center text-sage font-bold">
+                  {user.name.charAt(0)}
+                </div>
+              )}
             </div>
           </div>
         </header>

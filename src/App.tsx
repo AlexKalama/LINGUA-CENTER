@@ -11,6 +11,7 @@ import StudentEnrollmentActions from './components/StudentEnrollmentActions';
 import ProgramsManagement from './components/ProgramsManagement';
 import TeacherManagement from './components/TeacherManagement';
 import Financials from './components/Financials';
+import TeacherProfile from './components/TeacherProfile';
 import { AlertCircle } from 'lucide-react';
 import { supabase } from './lib/supabase';
 
@@ -257,6 +258,7 @@ export default function App() {
               <Route path="/students" element={<StudentManagement user={user} />} />
               <Route path="/students/:id" element={<StudentProfile user={user} />} />
               <Route path="/students/:studentId/enrollments/:enrollmentId/manage" element={<StudentEnrollmentActions user={user} />} />
+              <Route path="/profile" element={<TeacherProfile user={user} />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </>
           )}
