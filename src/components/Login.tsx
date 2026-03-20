@@ -132,28 +132,28 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-ivory p-4 sm:p-6 overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-ivory p-4 overflow-hidden">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md max-h-[92vh] overflow-y-auto"
+        className="w-full max-w-sm"
       >
-        <div className="text-center mb-8 sm:mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-navy text-white mb-3 sm:mb-4">
-            <BookOpen size={30} />
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-navy text-white mb-3">
+            <BookOpen size={26} />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-serif text-charcoal mb-2">Lingua Center</h1>
-          <p className="text-charcoal/60 font-sans text-sm sm:text-base">Academic Management System</p>
+          <h1 className="text-2xl font-serif text-charcoal mb-1">Lingua Center</h1>
+          <p className="text-charcoal/60 font-sans text-sm">Academic Management System</p>
         </div>
 
-        <div className="glass-card p-6 sm:p-8 shadow-xl border-charcoal/10">
-          <h2 className="text-xl sm:text-2xl font-serif text-charcoal mb-4 sm:mb-6 text-center">Internal Access</h2>
+        <div className="glass-card p-5 shadow-xl border-charcoal/10">
+          <h2 className="text-lg font-serif text-charcoal mb-4 text-center">Internal Access</h2>
 
-          <div className="grid grid-cols-2 gap-2 mb-5 sm:mb-6">
+          <div className="grid grid-cols-2 gap-2 mb-4">
             <button
               type="button"
               onClick={() => handleSwitchRole('ADMIN')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+              className={`px-2.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
                 role === 'ADMIN' ? 'bg-navy text-white' : 'bg-charcoal/5 text-charcoal/60'
               }`}
             >
@@ -163,7 +163,7 @@ export default function Login() {
             <button
               type="button"
               onClick={() => handleSwitchRole('TEACHER')}
-              className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+              className={`px-2.5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
                 role === 'TEACHER' ? 'bg-navy text-white' : 'bg-charcoal/5 text-charcoal/60'
               }`}
             >
@@ -184,9 +184,9 @@ export default function Login() {
           )}
 
           {!showForgot ? (
-            <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4">
+            <form onSubmit={handleLogin} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-charcoal/50 uppercase tracking-wider mb-2">
+                <label className="block text-[11px] font-semibold text-charcoal/50 uppercase tracking-wider mb-2">
                   {role === 'ADMIN' ? 'Admin Email' : 'Teacher Email'}
                 </label>
                 <input
@@ -199,7 +199,7 @@ export default function Login() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-charcoal/50 uppercase tracking-wider mb-2">Password</label>
+                <label className="block text-[11px] font-semibold text-charcoal/50 uppercase tracking-wider mb-2">Password</label>
                 <input
                   type="password"
                   className="input-field"
@@ -213,7 +213,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full btn-primary py-3 text-base sm:text-lg mt-3 sm:mt-4 shadow-lg shadow-navy/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full btn-primary py-2.5 text-sm mt-2 shadow-lg shadow-navy/20 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? <Loader2 className="animate-spin" size={20} /> : 'Sign In'}
               </button>
@@ -234,7 +234,7 @@ export default function Login() {
                   Forgot password?
                 </button>
               ) : (
-                <p className="text-center text-xs text-charcoal/50 pt-1">
+                <p className="text-center text-[11px] text-charcoal/50 pt-1">
                   Password changes are managed by the administrator.
                 </p>
               )}
@@ -242,7 +242,7 @@ export default function Login() {
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-charcoal/50 uppercase tracking-wider mb-2">Admin Email</label>
+                <label className="block text-[11px] font-semibold text-charcoal/50 uppercase tracking-wider mb-2">Admin Email</label>
                 <input
                   type="email"
                   className="input-field"
@@ -256,7 +256,7 @@ export default function Login() {
               {otpSent && (
                 <>
                   <div>
-                    <label className="block text-xs font-semibold text-charcoal/50 uppercase tracking-wider mb-2">OTP Code</label>
+                    <label className="block text-[11px] font-semibold text-charcoal/50 uppercase tracking-wider mb-2">OTP Code</label>
                     <input
                       type="text"
                       className="input-field"
@@ -266,7 +266,7 @@ export default function Login() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-charcoal/50 uppercase tracking-wider mb-2">New Password</label>
+                    <label className="block text-[11px] font-semibold text-charcoal/50 uppercase tracking-wider mb-2">New Password</label>
                     <input
                       type="password"
                       className="input-field"
@@ -276,7 +276,7 @@ export default function Login() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-charcoal/50 uppercase tracking-wider mb-2">Confirm Password</label>
+                    <label className="block text-[11px] font-semibold text-charcoal/50 uppercase tracking-wider mb-2">Confirm Password</label>
                     <input
                       type="password"
                       className="input-field"
@@ -292,7 +292,7 @@ export default function Login() {
                 type="button"
                 onClick={otpSent ? verifyOtpAndResetPassword : sendForgotOtp}
                 disabled={loading}
-                className="w-full btn-primary py-3 text-base sm:text-lg mt-3 sm:mt-4 shadow-lg shadow-navy/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full btn-primary py-2.5 text-sm mt-2 shadow-lg shadow-navy/20 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <Loader2 className="animate-spin" size={20} />
@@ -319,14 +319,14 @@ export default function Login() {
                   setConfirmPassword('');
                   resetFeedback();
                 }}
-                className="w-full text-sm text-charcoal/60 hover:text-charcoal pt-1"
+                className="w-full text-[11px] text-charcoal/60 hover:text-charcoal pt-1"
               >
                 Back to sign in
               </button>
             </div>
           )}
 
-          <p className="text-center text-xs text-charcoal/40 mt-8">
+          <p className="text-center text-[11px] text-charcoal/40 mt-6">
             Protected by Lingua Center Security. <br />
             Unauthorized access is prohibited.
           </p>
